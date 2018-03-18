@@ -3,7 +3,7 @@
 import gym
 import sys
 
-def run_env(argv):
+def run_gym_env(argv):
     env = gym.make(argv[1]) # Name of the environment supplied as 1st argument
     env.reset()
     for _ in range(int(argv[2])): # Number of steps to be run supplied as 2nd argument
@@ -12,4 +12,4 @@ def run_env(argv):
     env.close()
     
 if __name__ == "__main__":
-    run_env(sys.argv)
+    run_gym_env(sys.argv)
