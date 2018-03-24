@@ -1,3 +1,5 @@
 #Ignore temporary files
 .*.sw?
 *~
+#Ignore zip files
+*.zip
