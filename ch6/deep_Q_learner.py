@@ -6,6 +6,7 @@ from collections import namedtuple
 from torch.autograd import Variable
 import numpy as np
 from decay_schedule import LinearDecaySchedule
+from utils.experience_memory import Experience, ExperienceMemory
 from tensorboardX import SummaryWriter
 from datetime import datetime
 
@@ -16,9 +17,6 @@ REPLAY_BATCH_SIZE = 1000
 summary_file_name = "logs/DeepQLearner_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_name)
 global_step_num = 0
-
-Experience = namedtuple("Experience", ['obs', 'action', 'reward', 'next_obs',
-                                       'done'])
 
 
 class NN1(torch.nn.Module):
@@ -57,7 +55,7 @@ class Deep_Q_Learner(object):
                                     max_steps= 0.5 * MAX_NUM_EPISODES * 0.3 * MAX_STEPS_PER_EPISODE)
         self.step_num = 0
                 
-        self.memory = list()
+        self.memory = ExperienceMemory(capacity=int(1e6))  # Initialize an Experience memory with 1M capacity
 
     def get_action(self, observation):
         return self.policy(observation)
@@ -114,7 +112,7 @@ class Deep_Q_Learner(object):
         self.Q_optimizer.step()
 
     def replay_experience(self, batch_size=REPLAY_BATCH_SIZE):
-        experience_batch = random.sample(self.memory, batch_size)
+        experience_batch = self.memory.sample(batch_size)
         self.learn_from_batch_experience(experience_batch)
 
 
@@ -132,7 +130,7 @@ if __name__ == "__main__":
             action = agent.get_action(obs)
             next_obs, reward, done, info = env.step(action)
             #agent.learn(obs, action, reward, next_obs, done)
-            agent.memory.append(Experience(obs, action, reward, next_obs, done))
+            agent.memory.store(Experience(obs, action, reward, next_obs, done))
 
             obs = next_obs
             cum_reward += reward
@@ -151,7 +149,7 @@ if __name__ == "__main__":
                 writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), episode)
                 writer.add_scalar("main/max_ep_rew", max_reward, episode)
 
-                if len(agent.memory) > 2 * REPLAY_BATCH_SIZE:
+                if agent.memory.get_size() >= 2 * REPLAY_BATCH_SIZE:
                     agent.replay_experience()
                 break
     env.close()
