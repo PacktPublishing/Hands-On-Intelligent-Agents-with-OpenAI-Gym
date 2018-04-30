@@ -6,18 +6,24 @@ from collections import namedtuple
 from torch.autograd import Variable
 import numpy as np
 from decay_schedule import LinearDecaySchedule
+from tensorboardX import SummaryWriter
+from datetime import datetime
 
 env = gym.make("CartPole-v0")
 MAX_NUM_EPISODES = 10000
 MAX_STEPS_PER_EPISODE = 300
 REPLAY_BATCH_SIZE = 1000
+summary_file_name = "logs/DeepQLearner_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+writer = SummaryWriter(summary_file_name)
+global_step_num = 0
 
 Experience = namedtuple("Experience", ['obs', 'action', 'reward', 'next_obs',
                                        'done'])
 
 
 class NN1(torch.nn.Module):
-    def __init__(self, input_shape, output_shape, hidden_shape=40):
+    def __init__(self, input_shape, output_shape, hidden_shape=40, seed=555):
+        torch.manual_seed(seed)
         super(NN1, self).__init__()
         self.linear1 = torch.nn.Linear(input_shape, hidden_shape)
         self.linear2 = torch.nn.Linear(hidden_shape, hidden_shape)
@@ -48,7 +54,7 @@ class Deep_Q_Learner(object):
         self.epsilon_min = 0.05
         self.epsilon_decay = LinearDecaySchedule(initial_value=self.epsilon_max,
                                     final_value=self.epsilon_min,
-                                    max_steps=MAX_NUM_EPISODES * MAX_STEPS_PER_EPISODE)
+                                    max_steps= 0.5 * MAX_NUM_EPISODES * 0.3 * MAX_STEPS_PER_EPISODE)
         self.step_num = 0
                 
         self.memory = list()
@@ -57,7 +63,9 @@ class Deep_Q_Learner(object):
         return self.policy(observation)
 
     def epsilon_greedy_Q(self, observation):
-        # Decay Epsilion/exploratin as per schedule
+        # Decay Epsilon/exploration as per schedule
+        writer.add_scalar("DQL/epsilon", self.epsilon_decay(self.step_num), self.step_num)
+        self.step_num +=1
         if random.random() < self.epsilon_decay(self.step_num):
             action = random.choice([i for i in range(self.action_shape)])
         else:
@@ -102,6 +110,7 @@ class Deep_Q_Learner(object):
 
         self.Q_optimizer.zero_grad()
         td_error.mean().backward()
+        writer.add_scalar("DQL/td_error", td_error.mean(), self.step_num)
         self.Q_optimizer.step()
 
     def replay_experience(self, batch_size=REPLAY_BATCH_SIZE):
@@ -127,6 +136,7 @@ if __name__ == "__main__":
 
             obs = next_obs
             cum_reward += reward
+            global_step_num +=1
 
             if done is True:
                 if first_episode:  # Initialize max_reward at the end of first episode
@@ -135,9 +145,14 @@ if __name__ == "__main__":
                 episode_rewards.append(cum_reward)
                 if cum_reward > max_reward:
                     max_reward = cum_reward
-                print("\nEpisode#{} ended in {} steps. reward ={} ; mean_reward={} best_reward={}".
+                print("\nEpisode#{} ended in {} steps. reward ={} ; mean_reward={:.3f} best_reward={}".
                       format(episode, step+1, cum_reward, np.mean(episode_rewards), max_reward))
+                writer.add_scalar("main/ep_reward", cum_reward, episode)
+                writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), episode)
+                writer.add_scalar("main/max_ep_rew", max_reward, episode)
+
                 if len(agent.memory) > 2 * REPLAY_BATCH_SIZE:
                     agent.replay_experience()
                 break
     env.close()
+    writer.close()
