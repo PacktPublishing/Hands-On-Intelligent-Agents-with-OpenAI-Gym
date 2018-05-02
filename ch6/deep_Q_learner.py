@@ -99,23 +99,18 @@ class Deep_Q_Learner(object):
         next_obs_batch = np.array(batch_xp.next_obs)
         done_batch = np.array(batch_xp.done)
 
-        done_true_idx = np.where(done_batch)
-        done_false_idx = np.where(~done_batch)
-        td_target = np.zeros_like(reward_batch)
-        td_target[done_true_idx] = reward_batch[done_true_idx]
-
         if USE_TARGET_NETWORK:
             if self.step_num % TARGET_NETWORK_UPDATE_FREQ == 0:
                 self.Q_target.load_state_dict(self.Q.state_dict())
-            td_target[done_false_idx] = reward_batch[done_false_idx] + \
-                np.tile(self.gamma, len(done_false_idx)) * \
-                self.Q_target(next_obs_batch[done_false_idx]).max(1)[0].data
+            td_target = reward_batch + ~done_batch * \
+                np.tile(self.gamma, len(next_obs_batch)) * \
+                self.Q_target(next_obs_batch).max(1)[0].data
         else:
-            td_target[done_false_idx] = reward_batch[done_false_idx] + \
-                np.tile(self.gamma, len(done_false_idx)) * \
-                self.Q(next_obs_batch[done_false_idx]).detach().max(1)[0].data
+            td_target = reward_batch + ~done_batch * \
+                np.tile(self.gamma, len(next_obs_batch)) * \
+                self.Q(next_obs_batch).detach().max(1)[0].data
 
-        td_target = Variable(torch.from_numpy(td_target), requires_grad=False)
+        td_target = Variable(td_target, requires_grad=False)
         action_idx = Variable(torch.from_numpy(action_batch))
         td_error = torch.nn.functional.mse_loss( self.Q(obs_batch).gather(1, action_idx.view(-1, 1)),
                                                        td_target.float().unsqueeze(1))
