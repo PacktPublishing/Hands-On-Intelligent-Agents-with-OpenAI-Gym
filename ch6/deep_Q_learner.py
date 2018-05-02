@@ -11,10 +11,14 @@ from tensorboardX import SummaryWriter
 from datetime import datetime
 
 env = gym.make("CartPole-v0")
-MAX_NUM_EPISODES = 10000
+MAX_NUM_EPISODES = 70000
 MAX_STEPS_PER_EPISODE = 300
-REPLAY_BATCH_SIZE = 1000
-summary_file_name = "logs/DeepQLearner_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+REPLAY_BATCH_SIZE = 2000
+
+USE_TARGET_NETWORK = True
+# Num steps after which target net is updated. A schedule can be used instead to vary the update freq
+TARGET_NETWORK_UPDATE_FREQ = 2000
+summary_file_name = "logs/DQL" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_name)
 global_step_num = 0
 
@@ -45,6 +49,8 @@ class Deep_Q_Learner(object):
         # Neural Network.
         self.Q = NN1(state_shape, action_shape)
         self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=1e-3)
+        if USE_TARGET_NETWORK:
+            self.Q_target = NN1(state_shape, action_shape)
         # self.policy is the policy followed by the agent. This agents follows
         # an epsilon-greedy policy w.r.t it's Q estimate.
         self.policy = self.epsilon_greedy_Q
@@ -52,7 +58,7 @@ class Deep_Q_Learner(object):
         self.epsilon_min = 0.05
         self.epsilon_decay = LinearDecaySchedule(initial_value=self.epsilon_max,
                                     final_value=self.epsilon_min,
-                                    max_steps= 0.5 * MAX_NUM_EPISODES * 0.3 * MAX_STEPS_PER_EPISODE)
+                                    max_steps= 0.1 * MAX_NUM_EPISODES * MAX_STEPS_PER_EPISODE)
         self.step_num = 0
                 
         self.memory = ExperienceMemory(capacity=int(1e6))  # Initialize an Experience memory with 1M capacity
@@ -96,15 +102,23 @@ class Deep_Q_Learner(object):
         done_true_idx = np.where(done_batch)
         done_false_idx = np.where(~done_batch)
         td_target = np.zeros_like(reward_batch)
-
         td_target[done_true_idx] = reward_batch[done_true_idx]
-        td_target[done_false_idx] = reward_batch[done_false_idx] + \
-            np.tile(self.gamma, len(done_false_idx)) * \
-            self.Q(next_obs_batch[done_false_idx]).max(1)[0].data
 
-        td_target = Variable(torch.from_numpy(td_target))
+        if USE_TARGET_NETWORK:
+            if self.step_num % TARGET_NETWORK_UPDATE_FREQ == 0:
+                self.Q_target.load_state_dict(self.Q.state_dict())
+            td_target[done_false_idx] = reward_batch[done_false_idx] + \
+                np.tile(self.gamma, len(done_false_idx)) * \
+                self.Q_target(next_obs_batch[done_false_idx]).max(1)[0].data
+        else:
+            td_target[done_false_idx] = reward_batch[done_false_idx] + \
+                np.tile(self.gamma, len(done_false_idx)) * \
+                self.Q(next_obs_batch[done_false_idx]).detach().max(1)[0].data
+
+        td_target = Variable(torch.from_numpy(td_target), requires_grad=False)
         action_idx = Variable(torch.from_numpy(action_batch))
-        td_error = td_target.float() - self.Q(obs_batch).gather(1, action_idx.view(-1, 1))
+        td_error = torch.nn.functional.mse_loss( self.Q(obs_batch).gather(1, action_idx.view(-1, 1)),
+                                                       td_target.float().unsqueeze(1))
 
         self.Q_optimizer.zero_grad()
         td_error.mean().backward()
