@@ -1,22 +1,22 @@
 #!/usr/bin/env python
+
 import gym
-import random
 import torch
-from collections import namedtuple
 from torch.autograd import Variable
+import random
 import numpy as np
+
 from decay_schedule import LinearDecaySchedule
 from utils.experience_memory import Experience, ExperienceMemory
 from tensorboardX import SummaryWriter
 from datetime import datetime
 
-env = gym.make("CartPole-v0")
+ENV_NAME = "CartPole-v0"
 MAX_NUM_EPISODES = 70000
-MAX_STEPS_PER_EPISODE = 300
+MAX_STEPS_PER_EPISODE = 300  # Currently only used for calculating epsilon decay schedule
 REPLAY_BATCH_SIZE = 2000
 SEED = 555
 USE_CUDA = True
-
 USE_TARGET_NETWORK = True
 # Num steps after which target net is updated. A schedule can be used instead to vary the update freq
 TARGET_NETWORK_UPDATE_FREQ = 2000
@@ -30,12 +30,20 @@ np.random.seed(SEED)
 if torch.cuda.is_available() and USE_CUDA:
     torch.cuda.manual_seed_all(SEED)
 
-class NN1(torch.nn.Module):
-    def __init__(self, input_shape, output_shape, hidden_shape=40, seed=SEED):
-
-        super(NN1, self).__init__()
-        self.linear1 = torch.nn.Linear(input_shape, hidden_shape)
-        self.out = torch.nn.Linear(hidden_shape, output_shape)
+class SLP(torch.nn.Module):
+    """
+    A Single Layer Perceptron (SLP) class to approximate functions
+    """
+    def __init__(self, input_shape, output_shape):
+        """
+        :param input_shape: Shape/dimension of the input
+        :param output_shape: Shape/dimension of the output
+        """
+        super(SLP, self).__init__()
+        self.input_shape = input_shape[0]
+        self.hidden_shape = 40
+        self.linear1 = torch.nn.Linear(self.input_shape, self.hidden_shape)
+        self.out = torch.nn.Linear(self.hidden_shape, output_shape)
 
     def forward(self, x):
         x = Variable(torch.from_numpy(x)).float().to(device)
@@ -44,19 +52,68 @@ class NN1(torch.nn.Module):
         return x
 
 
+class CNN(torch.nn.Module):
+    """
+    A Convolution Neural Network (CNN) class to approximate functions with visual/image inputs
+    """
+    def __init__(self, input_shape, output_shape):
+        """
+        :param input_shape:  Shape/dimension of the input image. Assumed to be resized to C x 84 x 84
+        :param output_shape: Shape/dimension of the output.
+        """
+        #  input_shape: C x 84 x 84
+        super(CNN, self).__init__()
+        self.layer1 = torch.nn.Sequential(
+            torch.nn.Conv2d(input_shape[0], 64, kernel_size=4, stride=2, padding=1),
+            torch.nn.ReLU()
+        )
+        self.layer2 = torch.nn.Sequential(
+            torch.nn.Conv2d(64, 32, kernel_size=4, stride=2, padding=0),
+            torch.nn.ReLU()
+        )
+        self.layer3 = torch.nn.Sequential(
+            torch.nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=0),
+            torch.nn.ReLU()
+        )
+        self.out = torch.nn.Linear(18 * 18 * 32, output_shape)
+
+    def forward(self, x):
+        x = torch.from_numpy(x).float().to(device)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = x.view(x.shape[0], -1)
+        x = self.out(x)
+        return x
+
+
 class Deep_Q_Learner(object):
     def __init__(self, state_shape, action_shape, learning_rate=0.005,
                  gamma=0.98):
+        """
+        self.Q is the Action-Value function. This agent represents Q using a Neural Network
+        If the input is a single dimensional vector, uses a Single-Layer-Perceptron else if the input is 3 dimensional
+        image, use a Convolutional-Neural-Network
+
+        :param state_shape: Shape (tuple) of the observation/state
+        :param action_shape: Shape (number) of the discrete action space
+        :param learning_rate: Agent's (Q-)Learning rate for the Neural Network (default=0.005)
+        :param gamma: Agent's Discount factor (default=0.98)
+        """
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.gamma = gamma  # Agent's discount factor
         self.learning_rate = learning_rate  # Agent's Q-learning rate
-        # self.Q is the Action-Value function. This agent represents Q using a
-        # Neural Network.
-        self.Q = NN1(state_shape, action_shape).to(device)
+
+        if len(self.state_shape) == 1:  # Single dimensional observation/state space
+            self.DQN = SLP
+        elif len(self.state_shape) == 3:  # 3D/image observation/state
+            self.DQN = CNN
+
+        self.Q = self.DQN(state_shape, action_shape).to(device)
         self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=1e-3)
         if USE_TARGET_NETWORK:
-            self.Q_target = NN1(state_shape, action_shape).to(device)
+            self.Q_target = self.DQN(state_shape, action_shape).to(device)
         # self.policy is the policy followed by the agent. This agents follows
         # an epsilon-greedy policy w.r.t it's Q estimate.
         self.policy = self.epsilon_greedy_Q
@@ -70,6 +127,11 @@ class Deep_Q_Learner(object):
         self.memory = ExperienceMemory(capacity=int(1e6))  # Initialize an Experience memory with 1M capacity
 
     def get_action(self, observation):
+        if len(observation.shape) == 3: # Single image (not a batch)
+            if observation.shape[2] < observation.shape[0]:  # Probably observation is in W x H x C format
+                # Reshape to C x H x W format as per PyTorch's convention
+                observation = observation.reshape(observation.shape[2], observation.shape[1], observation.shape[0])
+            observation = np.expand_dims(observation, 0)  # Create a batch dimension
         return self.policy(observation)
 
     def epsilon_greedy_Q(self, observation):
@@ -130,9 +192,9 @@ class Deep_Q_Learner(object):
         experience_batch = self.memory.sample(batch_size)
         self.learn_from_batch_experience(experience_batch)
 
-
 if __name__ == "__main__":
-    observation_shape = env.observation_space.shape[0]
+    env = gym.make(ENV_NAME)
+    observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
     agent = Deep_Q_Learner(observation_shape, action_shape)
     first_episode = True
@@ -140,8 +202,11 @@ if __name__ == "__main__":
     for episode in range(MAX_NUM_EPISODES):
         obs = env.reset()
         cum_reward = 0.0  # Cumulative reward
-        for step in range(MAX_STEPS_PER_EPISODE):
-            # env.render()
+        done = False
+        step = 0
+        #for step in range(MAX_STEPS_PER_EPISODE):
+        while not done:
+            #env.render()
             action = agent.get_action(obs)
             next_obs, reward, done, info = env.step(action)
             #agent.learn(obs, action, reward, next_obs, done)
@@ -149,6 +214,7 @@ if __name__ == "__main__":
 
             obs = next_obs
             cum_reward += reward
+            step += 1
             global_step_num +=1
 
             if done is True:
