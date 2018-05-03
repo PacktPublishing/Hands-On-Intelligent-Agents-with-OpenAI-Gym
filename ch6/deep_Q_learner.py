@@ -14,6 +14,8 @@ env = gym.make("CartPole-v0")
 MAX_NUM_EPISODES = 70000
 MAX_STEPS_PER_EPISODE = 300
 REPLAY_BATCH_SIZE = 2000
+SEED = 555
+USE_CUDA = True
 
 USE_TARGET_NETWORK = True
 # Num steps after which target net is updated. A schedule can be used instead to vary the update freq
@@ -22,17 +24,21 @@ summary_file_name = "logs/DQL" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_name)
 global_step_num = 0
 
+device = torch.device("cuda" if torch.cuda.is_available() and USE_CUDA else "cpu")  # new in PyTorch 0.4
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+if torch.cuda.is_available() and USE_CUDA:
+    torch.cuda.manual_seed_all(SEED)
 
 class NN1(torch.nn.Module):
-    def __init__(self, input_shape, output_shape, hidden_shape=40, seed=555):
-        torch.manual_seed(seed)
+    def __init__(self, input_shape, output_shape, hidden_shape=40, seed=SEED):
+
         super(NN1, self).__init__()
         self.linear1 = torch.nn.Linear(input_shape, hidden_shape)
-        self.linear2 = torch.nn.Linear(hidden_shape, hidden_shape)
         self.out = torch.nn.Linear(hidden_shape, output_shape)
 
     def forward(self, x):
-        x = Variable(torch.from_numpy(x)).float()
+        x = Variable(torch.from_numpy(x)).float().to(device)
         x = torch.nn.functional.relu(self.linear1(x))
         x = self.out(x)
         return x
@@ -47,10 +53,10 @@ class Deep_Q_Learner(object):
         self.learning_rate = learning_rate  # Agent's Q-learning rate
         # self.Q is the Action-Value function. This agent represents Q using a
         # Neural Network.
-        self.Q = NN1(state_shape, action_shape)
+        self.Q = NN1(state_shape, action_shape).to(device)
         self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=1e-3)
         if USE_TARGET_NETWORK:
-            self.Q_target = NN1(state_shape, action_shape)
+            self.Q_target = NN1(state_shape, action_shape).to(device)
         # self.policy is the policy followed by the agent. This agents follows
         # an epsilon-greedy policy w.r.t it's Q estimate.
         self.policy = self.epsilon_greedy_Q
@@ -73,7 +79,7 @@ class Deep_Q_Learner(object):
         if random.random() < self.epsilon_decay(self.step_num):
             action = random.choice([i for i in range(self.action_shape)])
         else:
-            action = np.argmax(self.Q(observation).data.numpy())
+            action = np.argmax(self.Q(observation).data.to(torch.device('cpu')).numpy())
 
 
         return action
@@ -110,8 +116,8 @@ class Deep_Q_Learner(object):
                 np.tile(self.gamma, len(next_obs_batch)) * \
                 self.Q(next_obs_batch).detach().max(1)[0].data
 
-        td_target = Variable(td_target, requires_grad=False)
-        action_idx = Variable(torch.from_numpy(action_batch))
+        td_target = td_target.to(device)
+        action_idx = torch.from_numpy(action_batch).to(device)
         td_error = torch.nn.functional.mse_loss( self.Q(obs_batch).gather(1, action_idx.view(-1, 1)),
                                                        td_target.float().unsqueeze(1))
 
