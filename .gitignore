@@ -3,3 +3,6 @@
 *~
 #Ignore zip files
 *.zip
+#Python intermediate files
+__pycache__
+*.pyc

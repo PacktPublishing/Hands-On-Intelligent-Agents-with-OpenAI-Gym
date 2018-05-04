@@ -2,12 +2,13 @@
 
 import gym
 import torch
-from torch.autograd import Variable
 import random
 import numpy as np
 
 from decay_schedule import LinearDecaySchedule
 from utils.experience_memory import Experience, ExperienceMemory
+from function_approximator.perceptron import SLP
+from function_approximator.cnn import CNN
 from tensorboardX import SummaryWriter
 from datetime import datetime
 
@@ -29,62 +30,6 @@ torch.manual_seed(SEED)
 np.random.seed(SEED)
 if torch.cuda.is_available() and USE_CUDA:
     torch.cuda.manual_seed_all(SEED)
-
-class SLP(torch.nn.Module):
-    """
-    A Single Layer Perceptron (SLP) class to approximate functions
-    """
-    def __init__(self, input_shape, output_shape):
-        """
-        :param input_shape: Shape/dimension of the input
-        :param output_shape: Shape/dimension of the output
-        """
-        super(SLP, self).__init__()
-        self.input_shape = input_shape[0]
-        self.hidden_shape = 40
-        self.linear1 = torch.nn.Linear(self.input_shape, self.hidden_shape)
-        self.out = torch.nn.Linear(self.hidden_shape, output_shape)
-
-    def forward(self, x):
-        x = Variable(torch.from_numpy(x)).float().to(device)
-        x = torch.nn.functional.relu(self.linear1(x))
-        x = self.out(x)
-        return x
-
-
-class CNN(torch.nn.Module):
-    """
-    A Convolution Neural Network (CNN) class to approximate functions with visual/image inputs
-    """
-    def __init__(self, input_shape, output_shape):
-        """
-        :param input_shape:  Shape/dimension of the input image. Assumed to be resized to C x 84 x 84
-        :param output_shape: Shape/dimension of the output.
-        """
-        #  input_shape: C x 84 x 84
-        super(CNN, self).__init__()
-        self.layer1 = torch.nn.Sequential(
-            torch.nn.Conv2d(input_shape[0], 64, kernel_size=4, stride=2, padding=1),
-            torch.nn.ReLU()
-        )
-        self.layer2 = torch.nn.Sequential(
-            torch.nn.Conv2d(64, 32, kernel_size=4, stride=2, padding=0),
-            torch.nn.ReLU()
-        )
-        self.layer3 = torch.nn.Sequential(
-            torch.nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=0),
-            torch.nn.ReLU()
-        )
-        self.out = torch.nn.Linear(18 * 18 * 32, output_shape)
-
-    def forward(self, x):
-        x = torch.from_numpy(x).float().to(device)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = x.view(x.shape[0], -1)
-        x = self.out(x)
-        return x
 
 
 class Deep_Q_Learner(object):
@@ -110,10 +55,10 @@ class Deep_Q_Learner(object):
         elif len(self.state_shape) == 3:  # 3D/image observation/state
             self.DQN = CNN
 
-        self.Q = self.DQN(state_shape, action_shape).to(device)
+        self.Q = self.DQN(state_shape, action_shape, device).to(device)
         self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=1e-3)
         if USE_TARGET_NETWORK:
-            self.Q_target = self.DQN(state_shape, action_shape).to(device)
+            self.Q_target = self.DQN(state_shape, action_shape, device).to(device)
         # self.policy is the policy followed by the agent. This agents follows
         # an epsilon-greedy policy w.r.t it's Q estimate.
         self.policy = self.epsilon_greedy_Q
