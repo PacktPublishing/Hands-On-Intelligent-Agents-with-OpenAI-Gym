@@ -35,3 +35,4 @@ class CNN(torch.nn.Module):
         x = self.layer3(x)
         x = x.view(x.shape[0], -1)
         x = self.out(x)
+        return x
