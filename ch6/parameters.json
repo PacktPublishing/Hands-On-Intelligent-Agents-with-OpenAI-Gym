@@ -11,12 +11,14 @@
     "epsilon_min": 0.05,
     "seed": 555,
     "use_cuda": true,
-    "summary_filename_prefix": "logs/DQL_"
+    "summary_file_path_prefix": "logs/DQL_"
   },
   "env": {
     "type": "Atari",
-    "episodic_life": "True",
-    "clip_reward": "True",
+    "episodic_life": true,
+    "clip_reward": true,
+    "skip_rate": 4,
+    "render": false,
     "useful_region": {
         "Default":{
                 "crop1": 34,

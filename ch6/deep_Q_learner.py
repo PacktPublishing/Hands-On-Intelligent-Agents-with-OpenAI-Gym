@@ -5,6 +5,7 @@ import torch
 import random
 import numpy as np
 
+import environment.atari as Atari
 from utils.params_manager import ParamsManager
 from utils.decay_schedule import LinearDecaySchedule
 from utils.experience_memory import Experience, ExperienceMemory
@@ -14,31 +15,32 @@ from tensorboardX import SummaryWriter
 from datetime import datetime
 from argparse import ArgumentParser
 
-args = ArgumentParser("Deep-Q-Learner arguments")
+args = ArgumentParser("deep_Q_learner")
 args.add_argument("--params-file",
                   help="Path to the parameters json file. Default is parameters.json",
                   default="parameters.json",
                   type=str,
-                  metavar="F")
+                  metavar="PFILE")
 args.add_argument("--env-name",
-                  help="ID of the Atari environment available in OpenAI Gym",
-                  default="CartPole-v0",
+                  help="ID of the Atari environment available in OpenAI Gym. Default is Pong-v0",
+                  default="Pong-v0",
                   type=str,
-                  metavar="E")
+                  metavar="ENV")
 args = args.parse_args()
 
 params_manager= ParamsManager(args.params_file)
-ENV_NAME = args.env_name
-SEED = params_manager.get_agent_params()['seed']
-summary_file_name = params_manager.get_agent_params()['summary_filename_prefix'] + datetime.now().strftime("%y-%m-%d-%H-%M")
+seed = params_manager.get_agent_params()['seed']
+summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
+summary_file_name = summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_name)
 global_step_num = 0
+use_cuda = params_manager.get_agent_params()['use_cuda']
 # new in PyTorch 0.4
-device = torch.device("cuda" if torch.cuda.is_available() and params_manager.get_agent_params()['use_cuda'] else "cpu")
-torch.manual_seed(SEED)
-np.random.seed(SEED)
-if torch.cuda.is_available() and USE_CUDA:
-    torch.cuda.manual_seed_all(SEED)
+device = torch.device("cuda" if torch.cuda.is_available() and use_cuda else "cpu")
+torch.manual_seed(seed)
+np.random.seed(seed)
+if torch.cuda.is_available() and use_cuda:
+    torch.cuda.manual_seed_all(seed)
 
 
 class Deep_Q_Learner(object):
@@ -150,7 +152,14 @@ class Deep_Q_Learner(object):
         self.learn_from_batch_experience(experience_batch)
 
 if __name__ == "__main__":
-    env = gym.make(ENV_NAME)
+    env_conf = params_manager.get_env_params()
+    # If a custom useful_region configuration for this environment ID is available, use it if not use the Default
+    if args.env_name in env_conf['useful_region'].keys():
+        env_conf['useful_region'] = env_conf['useful_region'][args.env_name]
+    else:
+        env_conf['useful_region'] = env_conf['useful_region']['Default']
+    print("env_conf:", env_conf)
+    env = Atari.make_env(args.env_name, env_conf)
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
     agent_params = params_manager.get_agent_params()
@@ -164,7 +173,8 @@ if __name__ == "__main__":
         step = 0
         #for step in range(agent_params['max_steps_per_episode']):
         while not done:
-            #env.render()
+            if env_conf['render']:
+                env.render()
             action = agent.get_action(obs)
             next_obs, reward, done, info = env.step(action)
             #agent.learn(obs, action, reward, next_obs, done)
