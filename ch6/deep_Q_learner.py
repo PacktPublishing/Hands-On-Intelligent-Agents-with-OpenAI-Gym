@@ -153,12 +153,15 @@ class Deep_Q_Learner(object):
 
 if __name__ == "__main__":
     env_conf = params_manager.get_env_params()
+    env_conf["env_name"] = args.env_name
     # If a custom useful_region configuration for this environment ID is available, use it if not use the Default
-    if args.env_name in env_conf['useful_region'].keys():
-        env_conf['useful_region'] = env_conf['useful_region'][args.env_name]
-    else:
-        env_conf['useful_region'] = env_conf['useful_region']['Default']
-    print("env_conf:", env_conf)
+    for key, value in env_conf['useful_region'].items():
+        if key in args.env_name:
+            env_conf['useful_region'] = value
+            break
+        else:
+            env_conf['useful_region'] = env_conf['useful_region']['Default']
+    print("Using env_conf:", env_conf)
     env = Atari.make_env(args.env_name, env_conf)
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
