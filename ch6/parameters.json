@@ -1,0 +1,83 @@
+{
+  "agent": {
+    "max_num_episodes": 70000,
+    "max_steps_per_episode": 300,
+    "replay_batch_size": 2000,
+    "use_target_network": true,
+    "target_network_update_freq": 2000,
+    "lr": 5e-3,
+    "gamma": 0.98,
+    "epsilon_max": 1.0,
+    "epsilon_min": 0.05,
+    "seed": 555,
+    "use_cuda": true,
+    "summary_filename_prefix": "logs/DQL_"
+  },
+  "env": {
+    "type": "Atari",
+    "episodic_life": "True",
+    "clip_reward": "True",
+    "useful_region": {
+        "Default":{
+                "crop1": 34,
+                "crop2": 34,
+                "dimension2": 80
+                },
+        "Asteroids": {
+                   "crop1": 16,
+                   "crop2": 34,
+                   "dimension2": 94
+                   },
+        "BeamRider": {
+                   "crop1": 20,
+                   "crop2": 20,
+                   "dimension2": 80
+                   },
+        "Breakout": {
+                  "crop1": 34,
+                  "crop2": 34,
+                  "dimension2": 80
+                  },
+        "Centipede": {
+          "crop1": 36,
+          "crop2": 56,
+          "dimension2": 90
+        },
+        "MsPacman": {
+          "crop1": 2,
+          "crop2": 10,
+          "dimension2": 84
+        },
+        "Pong": {
+          "crop1": 34,
+          "crop2": 34,
+          "dimension2": 80
+        },
+        "Seaquest": {
+          "crop1": 30,
+          "crop2": 30,
+          "dimension2": 80
+        },
+        "SpaceInvaders": {
+          "crop1": 8,
+          "crop2": 36,
+          "dimension2": 94
+        },
+        "VideoPinball": {
+          "crop1": 42,
+          "crop2": 60,
+          "dimension2": 89
+        },
+        "Qbert": {
+          "crop1": 12,
+          "crop2": 40,
+          "dimension2": 94
+        },
+        "Boxing": {
+          "crop1": 30,
+          "crop2": 30,
+          "dimension2": 80
+        }
+      }
+    }
+}
