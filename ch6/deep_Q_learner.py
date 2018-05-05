@@ -6,7 +6,7 @@ import random
 import numpy as np
 
 from utils.params_manager import ParamsManager
-from decay_schedule import LinearDecaySchedule
+from utils.decay_schedule import LinearDecaySchedule
 from utils.experience_memory import Experience, ExperienceMemory
 from function_approximator.perceptron import SLP
 from function_approximator.cnn import CNN
@@ -50,8 +50,7 @@ class Deep_Q_Learner(object):
 
         :param state_shape: Shape (tuple) of the observation/state
         :param action_shape: Shape (number) of the discrete action space
-        :param learning_rate: Agent's (Q-)Learning rate for the Neural Network (default=0.005)
-        :param gamma: Agent's Discount factor (default=0.98)
+        :param params: A dictionary containing various Agent configuration parameters and hyper-parameters
         """
         self.state_shape = state_shape
         self.action_shape = action_shape
@@ -65,7 +64,7 @@ class Deep_Q_Learner(object):
             self.DQN = CNN
 
         self.Q = self.DQN(state_shape, action_shape, device).to(device)
-        self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=1e-3)
+        self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=self.learning_rate)
         if self.params['use_target_network']:
             self.Q_target = self.DQN(state_shape, action_shape, device).to(device)
         # self.policy is the policy followed by the agent. This agents follows
