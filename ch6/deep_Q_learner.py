@@ -150,22 +150,41 @@ class Deep_Q_Learner(object):
         experience_batch = self.memory.sample(batch_size)
         self.learn_from_batch_experience(experience_batch)
 
+    def save(self, env_name):
+        file_name = self.params['save_dir'] + "DQL_" + env_name + ".ptm"
+        torch.save(self.Q.state_dict(), file_name)
+        print("Agent's Q model state saved to ", file_name)
+
+    def load(self, env_name):
+        file_name = self.params['load_dir'] + "DQL_" + env_name + ".ptm"
+        self.Q.load_state_dict(torch.load(file_name))
+        print("Loaded Q model state from", file_name)
+
+
 if __name__ == "__main__":
     env_conf = params_manager.get_env_params()
     env_conf["env_name"] = args.env_name
     # If a custom useful_region configuration for this environment ID is available, use it if not use the Default
+    custom_region_available = False
     for key, value in env_conf['useful_region'].items():
         if key in args.env_name:
             env_conf['useful_region'] = value
+            custom_region_available = True
             break
-        else:
-            env_conf['useful_region'] = env_conf['useful_region']['Default']
+    if custom_region_available is not True:
+        env_conf['useful_region'] = env_conf['useful_region']['Default']
     print("Using env_conf:", env_conf)
     env = Atari.make_env(args.env_name, env_conf)
+
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
     agent_params = params_manager.get_agent_params()
     agent = Deep_Q_Learner(observation_shape, action_shape, agent_params)
+    if agent_params['load_trained_model']:
+        try:
+            agent.load(env_conf["env_name"])
+        except FileNotFoundError:
+            print("WARNING: No trained model found for this environment. Training from scratch.")
     first_episode = True
     episode_rewards = list()
     for episode in range(agent_params['max_num_episodes']):
@@ -194,6 +213,7 @@ if __name__ == "__main__":
                 episode_rewards.append(cum_reward)
                 if cum_reward > max_reward:
                     max_reward = cum_reward
+                    agent.save(env_conf['env_name'])
                 print("\nEpisode#{} ended in {} steps. reward ={} ; mean_reward={:.3f} best_reward={}".
                       format(episode, step+1, cum_reward, np.mean(episode_rewards), max_reward))
                 writer.add_scalar("main/ep_reward", cum_reward, episode)
