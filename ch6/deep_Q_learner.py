@@ -76,11 +76,10 @@ class Deep_Q_Learner(object):
         self.epsilon_min = 0.05
         self.epsilon_decay = LinearDecaySchedule(initial_value=self.epsilon_max,
                                     final_value=self.epsilon_min,
-                                    max_steps= 0.1 * self.params['max_num_episodes'] * \
-                                               self.params['max_steps_per_episode'])
+                                    max_steps= self.params['epsilon_decay_final_step'])
         self.step_num = 0
                 
-        self.memory = ExperienceMemory(capacity=int(1e6))  # Initialize an Experience memory with 1M capacity
+        self.memory = ExperienceMemory(capacity=int(self.params['experience_memory_capacity']))  # Initialize an Experience memory with 1M capacity
 
     def get_action(self, observation):
         if len(observation.shape) == 3: # Single image (not a batch)
@@ -115,8 +114,8 @@ class Deep_Q_Learner(object):
         td_error.backward()
         self.Q_optimizer.step()
 
-    def learn_from_batch_experience(self, experience):
-        batch_xp = Experience(*zip(*experience))
+    def learn_from_batch_experience(self, experiences):
+        batch_xp = Experience(*zip(*experiences))
         obs_batch = np.array(batch_xp.obs)
         action_batch = np.array(batch_xp.action)
         reward_batch = np.array(batch_xp.reward)
