@@ -173,8 +173,17 @@ if __name__ == "__main__":
             break
     if custom_region_available is not True:
         env_conf['useful_region'] = env_conf['useful_region']['Default']
+
     print("Using env_conf:", env_conf)
-    env = Atari.make_env(args.env_name, env_conf)
+    atari_env = False
+    for game in Atari.get_games_list():
+        if game in args.env_name.lower():
+            atari_env = True
+    if atari_env:
+        env = Atari.make_env(args.env_name, env_conf)
+    else:
+        print("Given environment name is not an Atari Env. Creating a Gym env")
+        env = gym.make(args.env_name)
 
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n

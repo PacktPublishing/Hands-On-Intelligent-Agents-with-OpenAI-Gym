@@ -33,6 +33,8 @@ def make_env(env_id, env_conf):
         env = ClipRewardEnv(env)
     return env
 
+def get_games_list():
+    return atari_py.list_games()
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
