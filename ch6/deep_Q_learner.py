@@ -216,12 +216,12 @@ if __name__ == "__main__":
                     agent.save(env_conf['env_name'])
                 print("\nEpisode#{} ended in {} steps. reward ={} ; mean_reward={:.3f} best_reward={}".
                       format(episode, step+1, cum_reward, np.mean(episode_rewards), max_reward))
-                writer.add_scalar("main/ep_reward", cum_reward, episode)
-                writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), episode)
-                writer.add_scalar("main/max_ep_rew", max_reward, episode)
-
+                writer.add_scalar("main/ep_reward", cum_reward, global_step_num)
+                writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), global_step_num)
+                writer.add_scalar("main/max_ep_rew", max_reward, global_step_num)
                 if agent.memory.get_size() >= 2 * agent_params['replay_batch_size']:
                     agent.replay_experience()
+
                 break
     env.close()
     writer.close()

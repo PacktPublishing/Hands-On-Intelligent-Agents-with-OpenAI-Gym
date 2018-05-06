@@ -8,6 +8,7 @@ Experience = namedtuple("Experience", ['obs', 'action', 'reward', 'next_obs',
 
 class ExperienceMemory(object):
     """
+    A cyclic/ring buffer based Experience Memory implementation
     """
     def __init__(self, capacity=int(1e6)):
         """
