@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import gym
+import atari_py
 import numpy as np
 from collections import deque
 from gym.spaces.box import Box
@@ -17,15 +18,21 @@ def make_env(env_id, env_conf):
     if env_conf['episodic_life']:
         env = EpisodicLifeEnv(env)
 
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
+    try:
+        if 'FIRE' in env.unwrapped.get_action_meanings():
+            env = FireResetEnv(env)
+    except AttributeError:
+        pass
 
     env = AtariRescale(env, env_conf['useful_region'])
-    env = NormalizedEnv(env)
+
+    if env_conf['normalize_observation']:
+        env = NormalizedEnv(env)
 
     if env_conf['clip_reward']:
         env = ClipRewardEnv(env)
     return env
+
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -39,8 +46,8 @@ class ClipRewardEnv(gym.RewardWrapper):
 def process_frame_84(frame, conf):
     frame = frame[conf["crop1"]:conf["crop2"] + 160, :160]
     frame = frame.mean(2)
-    frame = frame.astype(np.float32)
-    frame *= (1.0 / 255.0)
+    #frame = frame.astype(np.float32)
+    #frame *= (1.0 / 255.0)
     frame = cv2.resize(frame, (84, conf["dimension2"]))
     frame = cv2.resize(frame, (84, 84))
     frame = np.reshape(frame, [1, 84, 84])
@@ -50,7 +57,7 @@ def process_frame_84(frame, conf):
 class AtariRescale(gym.ObservationWrapper):
     def __init__(self, env, env_conf):
         gym.ObservationWrapper.__init__(self, env)
-        self.observation_space = Box(0.0, 1.0, [1, 84, 84])
+        self.observation_space = Box(0, 255, [1, 84, 84], dtype=np.uint8)
         self.conf = env_conf
 
     def observation(self, observation):

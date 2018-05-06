@@ -1,17 +1,21 @@
 {
   "agent": {
     "max_num_episodes": 70000,
-    "max_steps_per_episode": 300,
-    "replay_batch_size": 2000,
+    "epsilon_decay_final_step": 100000,
+    "experience_memory_capacity": 1e6,
+    "replay_batch_size": 4000,
     "use_target_network": true,
-    "target_network_update_freq": 2000,
-    "lr": 5e-3,
+    "target_network_update_freq": 10000,
+    "lr": 1e-4,
     "gamma": 0.98,
     "epsilon_max": 1.0,
     "epsilon_min": 0.05,
     "seed": 555,
     "use_cuda": true,
-    "summary_file_path_prefix": "logs/DQL_"
+    "summary_file_path_prefix": "logs/DQL_",
+    "load_trained_model": true,
+    "load_dir": "trained_models/",
+    "save_dir": "trained_models/"
   },
   "env": {
     "type": "Atari",
@@ -19,6 +23,7 @@
     "clip_reward": true,
     "skip_rate": 4,
     "render": false,
+    "normalize_observation": false,
     "useful_region": {
         "Default":{
                 "crop1": 34,
