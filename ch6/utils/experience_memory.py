@@ -26,7 +26,10 @@ class ExperienceMemory(object):
         :param experience: The Experience object to be stored into the memory
         :return:
         """
-        self.memory.insert(self.mem_idx % self.capacity, experience)
+        if self.mem_idx < self.capacity:
+            # Extend the memory and create space
+            self.memory.append(None)
+        self.memory[self.mem_idx % self.capacity] = experience
         self.mem_idx += 1
 
     def sample(self, batch_size):
