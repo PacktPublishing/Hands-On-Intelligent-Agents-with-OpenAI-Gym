@@ -31,8 +31,11 @@ args = args.parse_args()
 params_manager= ParamsManager(args.params_file)
 seed = params_manager.get_agent_params()['seed']
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
-summary_file_name = summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
-writer = SummaryWriter(summary_file_name)
+summary_file_path= summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+writer = SummaryWriter(summary_file_path)
+# Export the parameters as json files to the log directory to keep track of the parameters used in each experiment
+params_manager.export_env_params(summary_file_path + "/" + "env_params.json")
+params_manager.export_agent_params(summary_file_path + "/" + "agent_params.json")
 global_step_num = 0
 use_cuda = params_manager.get_agent_params()['use_cuda']
 # new in PyTorch 0.4
@@ -189,6 +192,7 @@ if __name__ == "__main__":
     action_shape = env.action_space.n
     agent_params = params_manager.get_agent_params()
     agent = Deep_Q_Learner(observation_shape, action_shape, agent_params)
+    print("Using agent_params:", agent_params)
     if agent_params['load_trained_model']:
         try:
             agent.load(env_conf["env_name"])

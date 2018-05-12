@@ -35,6 +35,22 @@ class ParamsManager(object):
         for key, value in kwargs.items():
             if key in self.params['agent'].keys():
                 self.params['agent'][key] = value
+    def export_env_params(self, file_name):
+        """
+        Export the environment parameters to the specified file. Useful for logging experiment specific parameters
+        :param file_name: Name of the file to write the environment parameters to
+        :return:
+        """
+        with open(file_name, 'w') as f:
+            json.dump(self.params['env'], f)
+    def export_agent_params(self, file_name):
+        """
+        Export the agent parameters to the specified file. Useful for logging experiment specific parameters.
+        :param file_name: Name of the file to write the agent parameters to
+        :return:
+        """
+        with open(file_name, 'w') as f:
+            json.dump(self.params['agent'], f)
 
 
 if __name__ == "__main__":
