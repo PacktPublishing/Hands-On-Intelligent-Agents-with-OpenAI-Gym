@@ -119,10 +119,10 @@ class Deep_Q_Learner(object):
 
     def learn_from_batch_experience(self, experiences):
         batch_xp = Experience(*zip(*experiences))
-        obs_batch = np.array(batch_xp.obs)
+        obs_batch = np.array(batch_xp.obs) / 255.0  # Scale/Divide by max limit of obs's dtype. 255 for uint8
         action_batch = np.array(batch_xp.action)
         reward_batch = np.array(batch_xp.reward)
-        next_obs_batch = np.array(batch_xp.next_obs)
+        next_obs_batch = np.array(batch_xp.next_obs) / 255.0  # Scale/Divide by max limit of obs' dtype. 255 for uint8
         done_batch = np.array(batch_xp.done)
 
         if self.params['use_target_network']:
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         while not done:
             if env_conf['render']:
                 env.render()
-            action = agent.get_action(obs)
+            action = agent.get_action(obs / 255.0)  # Scale/Divide by max limit of obs' dtype. 255 for uint8
             next_obs, reward, done, info = env.step(action)
             #agent.learn(obs, action, reward, next_obs, done)
             agent.memory.store(Experience(obs, action, reward, next_obs, done))

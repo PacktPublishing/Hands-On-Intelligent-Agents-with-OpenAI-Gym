@@ -2,11 +2,10 @@ import torch
 
 
 class CNN(torch.nn.Module):
-    """
-    A Convolution Neural Network (CNN) class to approximate functions with visual/image inputs
-    """
     def __init__(self, input_shape, output_shape, device="cpu"):
         """
+        A Convolution Neural Network (CNN) class to approximate functions with visual/image inputs
+
         :param input_shape:  Shape/dimension of the input image. Assumed to be resized to C x 84 x 84
         :param output_shape: Shape/dimension of the output.
         :param device: The device (cpu or cuda) that the CNN should use to store the inputs for the forward pass
