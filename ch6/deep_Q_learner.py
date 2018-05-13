@@ -64,6 +64,7 @@ class Deep_Q_Learner(object):
         self.learning_rate = self.params['lr']  # Agent's Q-learning rate
         self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
         self.best_reward = - float("inf")
+        self.training_steps_completed = 0  # Number of training batch steps completed so far
 
         if len(self.state_shape) == 1:  # Single dimensional observation/state space
             self.DQN = SLP
@@ -128,7 +129,7 @@ class Deep_Q_Learner(object):
         done_batch = np.array(batch_xp.done)
 
         if self.params['use_target_network']:
-            if self.step_num % self.params['target_network_update_freq'] == 0:
+            if self.training_steps_completed % self.params['target_network_update_freq'] == 0:
                 # The *update_freq is the Num steps after which target net is updated.
                 # A schedule can be used instead to vary the update freq.
                 self.Q_target.load_state_dict(self.Q.state_dict())
@@ -154,6 +155,7 @@ class Deep_Q_Learner(object):
         batch_size = batch_size if batch_size is not None else self.params['replay_batch_size']
         experience_batch = self.memory.sample(batch_size)
         self.learn_from_batch_experience(experience_batch)
+        self.training_steps_completed += 1  # Increment the number of training batch steps complemented
 
     def save(self, env_name):
         file_name = self.params['save_dir'] + "DQL_" + env_name + ".ptm"
