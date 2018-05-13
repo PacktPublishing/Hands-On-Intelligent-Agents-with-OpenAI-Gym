@@ -167,8 +167,9 @@ class Deep_Q_Learner(object):
 
     def load(self, env_name):
         file_name = self.params['load_dir'] + "DQL_" + env_name + ".ptm"
-        agent_state = torch.load(file_name)
+        agent_state = torch.load(file_name, map_location= lambda storage, loc: storage)
         self.Q.load_state_dict(agent_state["Q"])
+        self.Q.to(device)
         self.best_mean_reward = agent_state["best_mean_reward"]
         self.best_reward = agent_state["best_reward"]
         print("Loaded Q model state from", file_name,
