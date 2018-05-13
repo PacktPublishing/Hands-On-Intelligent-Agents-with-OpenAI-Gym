@@ -62,6 +62,8 @@ class Deep_Q_Learner(object):
         self.params = params
         self.gamma = self.params['gamma']  # Agent's discount factor
         self.learning_rate = self.params['lr']  # Agent's Q-learning rate
+        self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
+        self.best_reward = - float("inf")
 
         if len(self.state_shape) == 1:  # Single dimensional observation/state space
             self.DQN = SLP
@@ -155,13 +157,21 @@ class Deep_Q_Learner(object):
 
     def save(self, env_name):
         file_name = self.params['save_dir'] + "DQL_" + env_name + ".ptm"
-        torch.save(self.Q.state_dict(), file_name)
-        print("Agent's Q model state saved to ", file_name)
+        agent_state = {"Q": self.Q.state_dict(),
+                       "best_mean_reward": self.best_mean_reward,
+                       "best_reward": self.best_reward};
+        torch.save(agent_state, file_name)
+        print("Agent's state saved to ", file_name)
 
     def load(self, env_name):
         file_name = self.params['load_dir'] + "DQL_" + env_name + ".ptm"
-        self.Q.load_state_dict(torch.load(file_name))
-        print("Loaded Q model state from", file_name)
+        agent_state = torch.load(file_name)
+        self.Q.load_state_dict(agent_state["Q"])
+        self.best_mean_reward = agent_state["best_mean_reward"]
+        self.best_reward = agent_state["best_reward"]
+        print("Loaded Q model state from", file_name,
+              " which fetched a best mean reward of:", self.best_mean_reward,
+              " and an all time best reward of:", self.best_reward)
 
 
 if __name__ == "__main__":
@@ -192,14 +202,18 @@ if __name__ == "__main__":
     action_shape = env.action_space.n
     agent_params = params_manager.get_agent_params()
     agent = Deep_Q_Learner(observation_shape, action_shape, agent_params)
+    
+    episode_rewards = list()
+    prev_checkpoint_mean_ep_rew = agent.best_mean_reward
+    num_improved_episodes_before_checkpoint = 0  # To keep track of the num of ep with higher perf to save model
     print("Using agent_params:", agent_params)
     if agent_params['load_trained_model']:
         try:
             agent.load(env_conf["env_name"])
+            prev_checkpoint_mean_ep_rew = agent.best_mean_reward
         except FileNotFoundError:
             print("WARNING: No trained model found for this environment. Training from scratch.")
-    first_episode = True
-    episode_rewards = list()
+
     for episode in range(agent_params['max_num_episodes']):
         obs = env.reset()
         cum_reward = 0.0  # Cumulative reward
@@ -220,18 +234,21 @@ if __name__ == "__main__":
             global_step_num +=1
 
             if done is True:
-                if first_episode:  # Initialize max_reward at the end of first episode
-                    max_reward = cum_reward
-                    first_episode = False
                 episode_rewards.append(cum_reward)
-                if cum_reward > max_reward:
-                    max_reward = cum_reward
+                if cum_reward > agent.best_reward:
+                    agent.best_reward = cum_reward
+                if np.mean(episode_rewards) > prev_checkpoint_mean_ep_rew:
+                    num_improved_episodes_before_checkpoint += 1
+                if num_improved_episodes_before_checkpoint >= agent_params["save_freq_when_perf_improves"]:
+                    prev_checkpoint_mean_ep_rew = np.mean(episode_rewards)
+                    agent.best_mean_reward = np.mean(episode_rewards)
                     agent.save(env_conf['env_name'])
+                    num_improved_episodes_before_checkpoint = 0
                 print("\nEpisode#{} ended in {} steps. reward ={} ; mean_reward={:.3f} best_reward={}".
-                      format(episode, step+1, cum_reward, np.mean(episode_rewards), max_reward))
+                      format(episode, step+1, cum_reward, np.mean(episode_rewards), agent.best_reward))
                 writer.add_scalar("main/ep_reward", cum_reward, global_step_num)
                 writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), global_step_num)
-                writer.add_scalar("main/max_ep_rew", max_reward, global_step_num)
+                writer.add_scalar("main/max_ep_rew", agent.best_reward, global_step_num)
                 if agent.memory.get_size() >= 2 * agent_params['replay_batch_size']:
                     agent.replay_experience()
 
