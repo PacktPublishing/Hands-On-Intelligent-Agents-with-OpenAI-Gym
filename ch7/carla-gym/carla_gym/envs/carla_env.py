@@ -186,6 +186,99 @@ class CarlaEnv(gym.Env):
     def __del__(self):
         self.clear_server_state()
 
+    def reset(self):
+        error = None
+        for _ in range(RETRIES_ON_ERROR):
+            try:
+                if not self.server_process:
+                    self.init_server()
+                return self.reset_env()
+            except Exception as e:
+                print("Error during reset: {}".format(traceback.format_exc()))
+                self.clear_server_state()
+                error = e
+        raise error
+
+    def reset_env(self):
+        self.num_steps = 0
+        self.total_reward = 0
+        self.prev_measurement = None
+        self.prev_image = None
+        self.episode_id = datetime.today().strftime("%Y-%m-%d_%H-%M-%S_%f")
+        self.measurements_file = None
+
+        # Create a CarlaSettings object. This object is a wrapper around
+        # the CarlaSettings.ini file. Here we set the configuration we
+        # want for the new episode.
+        settings = CarlaSettings()
+        # If config["scenarios"] is a single scenario, then use it if it's an array of scenarios, randomly choose one and init
+        if isinstance(self.config["scenarios"],dict):
+            self.scenario = self.config["scenarios"]
+        else: #isinstance array of dict
+            self.scenario = random.choice(self.config["scenarios"])
+        assert self.scenario["city"] == self.city, (self.scenario, self.city)
+        self.weather = random.choice(self.scenario["weather_distribution"])
+        settings.set(
+            SynchronousMode=True,
+            SendNonPlayerAgentsInfo=True,
+            NumberOfVehicles=self.scenario["num_vehicles"],
+            NumberOfPedestrians=self.scenario["num_pedestrians"],
+            WeatherId=self.weather)
+        settings.randomize_seeds()
+
+        if self.config["use_depth_camera"]:
+            camera1 = Camera("CameraDepth", PostProcessing="Depth")
+            camera1.set_image_size(
+                self.config["render_x_res"], self.config["render_y_res"])
+            camera1.set_position(30, 0, 130)
+            settings.add_sensor(camera1)
+
+        camera2 = Camera("CameraRGB")
+        camera2.set_image_size(
+            self.config["render_x_res"], self.config["render_y_res"])
+        camera2.set_position(30, 0, 130)
+        settings.add_sensor(camera2)
+
+        # Setup start and end positions
+        scene = self.client.load_settings(settings)
+        positions = scene.player_start_spots
+        self.start_pos = positions[self.scenario["start_pos_id"]]
+        self.end_pos = positions[self.scenario["end_pos_id"]]
+        self.start_coord = [
+            self.start_pos.location.x // 100, self.start_pos.location.y // 100]
+        self.end_coord = [
+            self.end_pos.location.x // 100, self.end_pos.location.y // 100]
+        print(
+            "Start pos {} ({}), end {} ({})".format(
+                self.scenario["start_pos_id"], self.start_coord,
+                self.scenario["end_pos_id"], self.end_coord))
+
+        # Notify the server that we want to start the episode at the
+        # player_start index. This function blocks until the server is ready
+        # to start the episode.
+        print("Starting new episode...")
+        self.client.start_episode(self.scenario["start_pos_id"])
+
+        image, py_measurements = self._read_observation()
+        self.prev_measurement = py_measurements
+        return self.encode_obs(self.preprocess_image(image), py_measurements)
+
+    def encode_obs(self, image, py_measurements):
+        assert self.config["framestack"] in [1, 2]
+        prev_image = self.prev_image
+        self.prev_image = image
+        if prev_image is None:
+            prev_image = image
+        if self.config["framestack"] == 2:
+            image = np.concatenate([prev_image, image], axis=2)
+        obs = (
+            image,
+            COMMAND_ORDINAL[py_measurements["next_command"]],
+            [py_measurements["forward_speed"],
+             py_measurements["distance_to_goal"]])
+        self.last_obs = obs
+        return obs
+
     def step(self, action):
         try:
             obs = self.step_env(action)
