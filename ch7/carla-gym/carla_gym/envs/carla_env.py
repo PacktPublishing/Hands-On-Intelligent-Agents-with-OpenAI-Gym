@@ -186,6 +186,69 @@ class CarlaEnv(gym.Env):
     def __del__(self):
         self.clear_server_state()
 
+    def step(self, action):
+        try:
+            obs = self.step_env(action)
+            return obs
+        except Exception:
+            print(
+                "Error during step, terminating episode early",
+                traceback.format_exc())
+            self.clear_server_state()
+            return (self.last_obs, 0.0, True, {})
+
+    def step_env(self, action):
+        if self.config["discrete_actions"]:
+            action = DISCRETE_ACTIONS[int(action)]
+        assert len(action) == 2, "Invalid action {}".format(action)
+        throttle = float(np.clip(action[0], 0, 1))
+        brake = float(np.abs(np.clip(action[0], -1, 0)))
+        steer = float(np.clip(action[1], -1, 1))
+        reverse = False
+        hand_brake = False
+
+        if self.config["verbose"]:
+            print(
+                "steer", steer, "throttle", throttle, "brake", brake,
+                "reverse", reverse)
+
+        self.client.send_control(
+            steer=steer, throttle=throttle, brake=brake, hand_brake=hand_brake,
+            reverse=reverse)
+
+        # Process observations
+        image, py_measurements = self._read_observation()
+        if self.config["verbose"]:
+            print("Next command", py_measurements["next_command"])
+        if type(action) is np.ndarray:
+            py_measurements["action"] = [float(a) for a in action]
+        else:
+            py_measurements["action"] = action
+        py_measurements["control"] = {
+            "steer": steer,
+            "throttle": throttle,
+            "brake": brake,
+            "reverse": reverse,
+            "hand_brake": hand_brake,
+        }
+        reward = self.calculate_reward(py_measurements)
+        self.total_reward += reward
+        py_measurements["reward"] = reward
+        py_measurements["total_reward"] = self.total_reward
+        done = (self.num_steps > self.scenario["max_steps"] or
+                py_measurements["next_command"] == "REACH_GOAL" or
+                (self.config["early_terminate_on_collision"] and
+                 check_collision(py_measurements)))
+        py_measurements["done"] = done
+        self.prev_measurement = py_measurements
+
+        self.num_steps += 1
+        image = self.preprocess_image(image)
+        return (
+            self.encode_obs(image, py_measurements), reward, done,
+            py_measurements)
+
+
     def _read_observation(self):
         # Read the data produced by the server this frame.
         measurements, sensor_data = self.client.read_data()
