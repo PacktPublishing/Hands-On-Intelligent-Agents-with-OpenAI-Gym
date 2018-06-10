@@ -69,6 +69,24 @@ ENV_CONFIG = {
     "seed": 1
 }
 
+# Number of retries if the server doesn't respond
+RETRIES_ON_ERROR = 4
+# Dummy Z coordinate to use when we only care about (x, y)
+GROUND_Z = 22
+
+# Define the discrete action space
+DISCRETE_ACTIONS = {
+    0: [0.0, 0.0],    # Coast
+    1: [0.0, -0.5],   # Turn Left
+    2: [0.0, 0.5],    # Turn Right
+    3: [1.0, 0.0],    # Forward
+    4: [-0.5, 0.0],   # Brake
+    5: [1.0, -0.5],   # Bear Left & accelerate
+    6: [1.0, 0.5],    # Bear Right & accelerate
+    7: [-0.5, -0.5],  # Bear Left & decelerate
+    8: [-0.5, 0.5],   # Bear Right & decelerate
+}
+
 live_carla_processes = set()  # To keep track of all the Carla processes we launch to make the cleanup easier
 def cleanup():
     print("Killing live carla processes", live_carla_processes)
@@ -89,6 +107,10 @@ class CarlaEnv(gym.Env):
         if self.config["enable_planner"]:
             self.planner = Planner(self.city)
 
+        if config["discrete_actions"]:
+            self.action_space = Discrete(len(DISCRETE_ACTIONS))
+        else:
+            self.action_space = Box(-1.0, 1.0, shape=(2,), dtype=np.uint8)
         if config["use_depth_camera"]:
             image_space = Box(
                 -1.0, 1.0, shape=(
@@ -144,3 +166,106 @@ class CarlaEnv(gym.Env):
             except Exception as e:
                 print("Error connecting: {}, attempt {}".format(e, i))
                 time.sleep(2)
+
+    def clear_server_state(self):
+        print("Clearing Carla server state")
+        try:
+            if self.client:
+                self.client.disconnect()
+                self.client = None
+        except Exception as e:
+            print("Error disconnecting client: {}".format(e))
+            pass
+        if self.server_process:
+            pgid = os.getpgid(self.server_process.pid)
+            os.killpg(pgid, signal.SIGKILL)
+            live_carla_processes.remove(pgid)
+            self.server_port = None
+            self.server_process = None
+
+    def __del__(self):
+        self.clear_server_state()
+
+    def _read_observation(self):
+        # Read the data produced by the server this frame.
+        measurements, sensor_data = self.client.read_data()
+
+        # Print some of the measurements.
+        if self.config["verbose"]:
+            print_measurements(measurements)
+
+        observation = None
+        if self.config["use_depth_camera"]:
+            camera_name = "CameraDepth"
+        else:
+            camera_name = "CameraRGB"
+        for name, image in sensor_data.items():
+            if name == camera_name:
+                observation = image
+
+        cur = measurements.player_measurements
+
+        if self.config["enable_planner"]:
+            next_command = COMMANDS_ENUM[
+                self.planner.get_next_command(
+                    [cur.transform.location.x, cur.transform.location.y,
+                     GROUND_Z],
+                    [cur.transform.orientation.x, cur.transform.orientation.y,
+                     GROUND_Z],
+                    [self.end_pos.location.x, self.end_pos.location.y,
+                     GROUND_Z],
+                    [self.end_pos.orientation.x, self.end_pos.orientation.y,
+                     GROUND_Z])
+            ]
+        else:
+            next_command = "LANE_FOLLOW"
+
+        if next_command == "REACH_GOAL":
+            distance_to_goal = 0.0  # avoids crash in planner
+        elif self.config["enable_planner"]:
+            distance_to_goal = self.planner.get_shortest_path_distance(
+                [cur.transform.location.x, cur.transform.location.y, GROUND_Z],
+                [cur.transform.orientation.x, cur.transform.orientation.y,
+                 GROUND_Z],
+                [self.end_pos.location.x, self.end_pos.location.y, GROUND_Z],
+                [self.end_pos.orientation.x, self.end_pos.orientation.y,
+                 GROUND_Z]) / 100
+        else:
+            distance_to_goal = -1
+
+        distance_to_goal_euclidean = float(np.linalg.norm(
+            [cur.transform.location.x - self.end_pos.location.x,
+             cur.transform.location.y - self.end_pos.location.y]) / 100)
+
+        py_measurements = {
+            "episode_id": self.episode_id,
+            "step": self.num_steps,
+            "x": cur.transform.location.x,
+            "y": cur.transform.location.y,
+            "x_orient": cur.transform.orientation.x,
+            "y_orient": cur.transform.orientation.y,
+            "forward_speed": cur.forward_speed,
+            "distance_to_goal": distance_to_goal,
+            "distance_to_goal_euclidean": distance_to_goal_euclidean,
+            "collision_vehicles": cur.collision_vehicles,
+            "collision_pedestrians": cur.collision_pedestrians,
+            "collision_other": cur.collision_other,
+            "intersection_offroad": cur.intersection_offroad,
+            "intersection_otherlane": cur.intersection_otherlane,
+            "weather": self.weather,
+            "map": self.config["server_map"],
+            "start_coord": self.start_coord,
+            "end_coord": self.end_coord,
+            "current_scenario": self.scenario,
+            "x_res": self.config["x_res"],
+            "y_res": self.config["y_res"],
+            "num_vehicles": self.scenario["num_vehicles"],
+            "num_pedestrians": self.scenario["num_pedestrians"],
+            "max_steps": self.scenario["max_steps"],
+            "next_command": next_command,
+        }
+
+
+        assert observation is not None, sensor_data
+        return observation, py_measurements
+
