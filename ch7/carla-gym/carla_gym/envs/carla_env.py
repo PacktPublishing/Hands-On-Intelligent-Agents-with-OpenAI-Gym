@@ -3,6 +3,9 @@ OpenAI Gym compatible Driving simulation environment based on Carla.
 Requires the system environment variable CARLA_SERVER to be defined and be pointing to the
 CarlaUE4.sh file on your system. The default path is assumed to be at: ~/software/CARLA_0.8.2/CarlaUE4.sh
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 from datetime import datetime
 import atexit
@@ -483,6 +486,28 @@ class CarlaEnv(gym.Env):
 
         return reward
 
+def print_measurements(measurements):
+    number_of_agents = len(measurements.non_player_agents)
+    player_measurements = measurements.player_measurements
+    message = "Vehicle at ({pos_x:.1f}, {pos_y:.1f}), "
+    message += "{speed:.2f} km/h, "
+    message += "Collision: {{vehicles={col_cars:.0f}, "
+    message += "pedestrians={col_ped:.0f}, other={col_other:.0f}}}, "
+    message += "{other_lane:.0f}% other lane, {offroad:.0f}% off-road, "
+    message += "({agents_num:d} non-player agents in the scene)"
+    message = message.format(
+        pos_x=player_measurements.transform.location.x / 100,  # cm -> m
+        pos_y=player_measurements.transform.location.y / 100,
+        speed=player_measurements.forward_speed,
+        col_cars=player_measurements.collision_vehicles,
+        col_ped=player_measurements.collision_pedestrians,
+        col_other=player_measurements.collision_other,
+        other_lane=100 * player_measurements.intersection_otherlane,
+        offroad=100 * player_measurements.intersection_offroad,
+        agents_num=number_of_agents)
+    print(message)
+
+
 def check_collision(py_measurements):
     m = py_measurements
     collided = (
@@ -491,3 +516,18 @@ def check_collision(py_measurements):
     return bool(collided or m["total_reward"] < -100)
 
 
+if __name__ == "__main__":
+    for _ in range(5):
+        env = CarlaEnv()
+        obs = env.reset()
+        done = False
+        t = 0
+        total_reward = 0.0
+        while not done:
+            t += 1
+            if ENV_CONFIG["discrete_actions"]:
+                obs, reward, done, info = env.step(3)  # Go Forward
+            else:
+                obs, reward, done, info = env.step([1.0, 0.0])  # Full throttle, zero steering angle
+            total_reward += reward
+            print("step#:", t, "reward:", round(reward, 4), "total_reward:", round(total_reward, 4), "done:", done)
