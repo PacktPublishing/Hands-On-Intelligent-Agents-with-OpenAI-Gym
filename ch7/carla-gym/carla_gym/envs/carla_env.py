@@ -44,3 +44,28 @@ COMMAND_ORDINAL = {
     "TURN_LEFT": 3,
     "LANE_FOLLOW": 4,
 }
+
+# Load scenario configuration parameters from scenarios.json
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+scenario_config = json.load(open(os.path.join(__location__, "scenarios.json")))
+city = scenario_config["city"][1]  # Town2
+weathers = [scenario_config['Weather']['WetNoon'], scenario_config['Weather']['ClearSunset'] ]
+scenario_config['Weather_distribution'] = weathers
+
+# Default environment configuration
+ENV_CONFIG = {
+    "enable_planner": True,
+    "use_depth_camera": False,
+    "discrete_actions": True,
+    "server_map": "/Game/Maps/" + city,
+    "scenarios": [scenario_config["Lane_Keep_Town2"]],
+    "framestack": 2,  # note: only [1, 2] currently supported
+    "early_terminate_on_collision": True,
+    "verbose": False,
+    "render_x_res": 800,
+    "render_y_res": 600,
+    "x_res": 80,
+    "y_res": 80,
+    "seed": 1
+}
+
