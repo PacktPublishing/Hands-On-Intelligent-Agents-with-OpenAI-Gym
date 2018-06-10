@@ -32,3 +32,11 @@ cd bullet3/build
 cmake -DBUILD_SHARED_LIBS=ON -DUSE_DOUBLE_PRECISION=1 -DCMAKE_INSTALL_PREFIX:PATH=${ROBOSCHOOL_PATH}/roboschool/cpp-household/bullet_local_install -DBUILD_CPU_DEMOS=OFF -DBUILD_BULLET2_DEMOS=OFF -DBUILD_EXTRAS=OFF  -DBUILD_UNIT_TESTS=OFF -DBUILD_CLSOCKET=OFF -DBUILD_ENET=OFF -DBUILD_OPENGL3_DEMOS=OFF ..
 make -j8 && make install
 cd ../..
+
+echo "Step4/4: Installing Roboschool into rl_gym_book conda environment"
+if ${HOME}/anaconda3/envs/rl_gym_book/bin/pip install -e ${ROBOSCHOOL_PATH}; then
+    echo "Setup completed successfully. You can now import roboschool and use it. If you would like to \
+          test the installation, you can run: $(tput setaf 1)python `echo $ROBOSCHOOL_PATH`/agent_zoo/demo_race2.py"
+else
+    echo "Failed to install roboschool in your rl_gym_book conda environment. Please activate the rl_gym_book conda environment and run $(tput setaf 1) pip install -e `echo ${ROBOSCHOOL_PATH}` $(tput sgr0) to complete the setup."
+fi
