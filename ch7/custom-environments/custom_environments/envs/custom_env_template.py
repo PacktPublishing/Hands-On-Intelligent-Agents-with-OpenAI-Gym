@@ -12,7 +12,7 @@ class CustomEnv(gym.Env):
         # Modify the observation space, low, high and shape values according to your custom environment's needs
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(3,))
         # Modify the action space, and dimension according to your custom environment's needs
-        self.action_space = gym.spaces.Box(4)
+        self.action_space = gym.spaces.Discrete(4)
 
     def step(self, action):
         """
