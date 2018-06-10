@@ -4,7 +4,9 @@ Requires the system environment variable CARLA_SERVER to be defined and be point
 CarlaUE4.sh file on your system. The default path is assumed to be at: ~/software/CARLA_0.8.2/CarlaUE4.sh
 """
 
+from datetime import datetime
 import atexit
+import cv2
 import os
 import random
 import signal
@@ -342,6 +344,25 @@ class CarlaEnv(gym.Env):
             py_measurements)
 
 
+    def preprocess_image(self, image):
+        if self.config["use_depth_camera"]:
+            assert self.config["use_depth_camera"]
+            data = (image.data - 0.5) * 2
+            data = data.reshape(
+                self.config["render_y_res"], self.config["render_x_res"], 1)
+            data = cv2.resize(
+                data, (self.config["x_res"], self.config["y_res"]),
+                interpolation=cv2.INTER_AREA)
+            data = np.expand_dims(data, 2)
+        else:
+            data = image.data.reshape(
+                self.config["render_y_res"], self.config["render_x_res"], 3)
+            data = cv2.resize(
+                data, (self.config["x_res"], self.config["y_res"]),
+                interpolation=cv2.INTER_AREA)
+            data = (data.astype(np.float32) - 128) / 128
+        return data
+
     def _read_observation(self):
         # Read the data produced by the server this frame.
         measurements, sensor_data = self.client.read_data()
@@ -424,4 +445,49 @@ class CarlaEnv(gym.Env):
 
         assert observation is not None, sensor_data
         return observation, py_measurements
+
+    def calculate_reward(self, current_measurement):
+        """
+        Calculate the reward based on the effect of the action taken using the previous and the current measurements
+        :param current_measurement: The measurement obtained from the Carla engine after executing the current action
+        :return: The scalar reward
+        """
+        reward = 0.0
+
+        cur_dist = current_measurement["distance_to_goal"]
+
+        prev_dist = self.prev_measurement["distance_to_goal"]
+
+        if env.config["verbose"]:
+            print("Cur dist {}, prev dist {}".format(cur_dist, prev_dist))
+
+        # Distance travelled toward the goal in m
+        reward += np.clip(prev_dist - cur_dist, -10.0, 10.0)
+
+        # Change in speed (km/hr)
+        reward += 0.05 * (current_measurement["forward_speed"] - self.prev_measurement["forward_speed"])
+
+        # New collision damage
+        reward -= .00002 * (
+            current_measurement["collision_vehicles"] + current_measurement["collision_pedestrians"] +
+            current_measurement["collision_other"] - self.prev_measurement["collision_vehicles"] -
+            self.prev_measurement["collision_pedestrians"] - self.prev_measurement["collision_other"])
+
+        # New sidewalk intersection
+        reward -= 2 * (
+            current_measurement["intersection_offroad"] - self.prev_measurement["intersection_offroad"])
+
+        # New opposite lane intersection
+        reward -= 2 * (
+            current_measurement["intersection_otherlane"] - self.prev_measurement["intersection_otherlane"])
+
+        return reward
+
+def check_collision(py_measurements):
+    m = py_measurements
+    collided = (
+        m["collision_vehicles"] > 0 or m["collision_pedestrians"] > 0 or
+        m["collision_other"] > 0)
+    return bool(collided or m["total_reward"] < -100)
+
 
