@@ -1,0 +1,42 @@
+{
+  "city": [ "Town01", "Town02"],
+
+  "Weather": {
+    "Default":          0,
+    "ClearNoon":        1,
+    "CloudyNoon":       2,
+    "WetNoon":          3,
+    "WetCloudyNoon":    4,
+    "MidRainyNoon":     5,
+    "HardRainNoon":     6,
+    "SoftRainNoon":     7,
+    "ClearSunset":      8,
+    "CloudySunset":     9,
+    "WetSunset":        10,
+    "WetCloudySunset":  11,
+    "MidRainSunset":    12,
+    "HardRainSunset":   13,
+    "SoftRainSunset":   14
+  },
+
+
+  "Lane_Keep_Town1": {
+    "city": "Town01",
+    "start_pos_id": 36,
+    "end_pos_id": 40,
+    "num_vehicles": 25,
+    "num_pedestrians": 15,
+    "Weather_distribution": [1],
+    "max_steps": 200
+  },
+
+  "Lane_Keep_Town2": {
+    "city": "Town02",
+    "start_pos_id": 36,
+    "end_pos_id": 40,
+    "num_vehicles": 25,
+    "num_pedestrians": 30,
+    "weather_distribution": [0],
+    "max_steps": 200
+  }
+}
