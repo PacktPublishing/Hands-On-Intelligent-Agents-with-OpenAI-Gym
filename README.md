@@ -6,6 +6,7 @@ This is the code repository for the [Hands-On Intelligent Agents with OpenAI Gym
 - [Chapter 4: Exploring the Gym and its features](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch4)
 - [Chapter 5: Implementing your first learning agent -- Solving the Mountain Car problem](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch5)
 - [Chapter 6: Implementing an Intelligent Agent for Optimal Control using Deep Q Learning](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch6)
+- [Chapter 7: Creating custom OpenAI gym environments - Carla driving simulator](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch7)
 
 
 
