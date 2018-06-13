@@ -109,6 +109,26 @@ class Deep_AC_Agent(object):
         action[2] = torch.clamp(action[2], 0.0, 1.0) + 1e-4
         return action
 
+    def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
+        """
+        Learn using (1-step) Temporal Difference Actor-Critic policy gradient
+        :param s_t: Observation/state at time step t
+        :param a_t: Action taken at time step t
+        :param r: Reward obtained for taking a_t at time step t
+        :param s_tp1: Observation/reward at time step t+1
+        :param done: Whether or not the episode ends/completed at time step t
+        :return: None. The internal Actor-Critic parameters are updated
+        """
+        policy_loss = self.action_distribution.log_prob(torch.tensor(a_t))  # The call to self.policy(s_t) will also calculate and store V(s_t) in self.value
+        v_st = self.value
+        _ = self.policy(self.preproc_obs(s_tp1))  # This call populates V(s_t+1) in self.value
+        v_stp1 = self.value
+        td_err = r + self.gamma * v_stp1 - v_st
+        loss = - torch.sum(policy_loss + td_err)
+        writer.add_scalar("main/loss", loss, global_step_num)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
 if __name__ == "__main__":
     env = gym.make(args.env_name)
