@@ -1,0 +1,12 @@
+{
+  "env":{
+
+  },
+  "agent":{
+    "seed": 1,
+    "summary_file_path_prefix": "./logs/",
+    "use_cuda": true,
+    "max_num_episodes": 100,
+    "gamma": 0.99
+  }
+}
