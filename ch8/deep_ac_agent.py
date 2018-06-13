@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import torch
+from torch.distributions.multivariate_normal import MultivariateNormal
 import gym
 from argparse import ArgumentParser
 from utils.params_manager import ParamsManager
@@ -59,6 +60,54 @@ class Deep_AC(torch.nn.Module):
         critic = self.critic(x)
         return actor_mu, actor_sigma, critic
 
+
+class Deep_AC_Agent(object):
+    def __init__(self, state_shape, action_shape, agent_params):
+        """
+        An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
+        :param state_shape:
+        :param action_shape:
+        """
+        self.state_shape = state_shape
+        self.action_shape = action_shape
+        self.params = agent_params
+        self.actor_critic = Deep_AC(self.state_shape, self.action_shape, 1, self.params).to(device)
+        self.policy = self.multi_variate_gaussian_policy
+        self.optimizer = torch.optim.RMSprop(self.actor_critic.parameters(), lr=1e-3)
+        self.gamma = self.params['gamma']
+
+    def multi_variate_gaussian_policy(self, obs):
+        """
+        Calculates a multi-variate gaussian distribution over actions given observations
+        :param obs: Agent's observation
+        :return: policy, a distribution over actions for the given observation
+        """
+        mu, sigma, value = self.actor_critic(obs)
+        mu = torch.clamp(mu, -1, 1).squeeze()  # Let mean be constrained to lie between -1 & 1
+        sigma = torch.nn.Softplus()(sigma).squeeze() + 1e-7  # Let sigma be (smoothly) +ve
+        self.sigma = sigma
+        self.mu = mu.to(torch.device("cpu"))
+        self.sigma = sigma.to(torch.device("cpu"))
+        self.value = value.to(torch.device("cpu"))
+        self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma)
+        return(self.action_distribution)
+
+
+    def preproc_obs(self, obs):
+        #  Make sure the obs are in this order: C x W x H and add a batch dimension
+        obs = np.reshape(obs, (obs.shape[2], obs.shape[1], obs.shape[0]))
+        obs = np.resize(obs, (3, 84, 84))
+        #  Convert to torch Tensor, add a batch dimension, convert to float repr
+        obs = torch.from_numpy(obs).unsqueeze(0).float()
+        return obs
+
+    def get_action(self, obs):
+        obs = self.preproc_obs(obs)
+        action_distribution = self.policy(obs)
+        action = action_distribution.sample().squeeze().to(torch.device("cpu"))
+        action[1] = torch.clamp(action[1], 0.0, 1.0)
+        action[2] = torch.clamp(action[2], 0.0, 1.0) + 1e-4
+        return action
 
 
 if __name__ == "__main__":
