@@ -4,6 +4,8 @@ import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
 import gym
 from argparse import ArgumentParser
+from datetime import datetime
+from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 
 parser = ArgumentParser("deep_ac_agent")
@@ -20,6 +22,9 @@ global_step_num = 0
 
 params_manager= ParamsManager(args.params_file)
 seed = params_manager.get_agent_params()['seed']
+summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
+summary_file_path= summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+writer = SummaryWriter(summary_file_path)
 # Export the parameters as json files to the log directory to keep track of the parameters used in each experiment
 params_manager.export_env_params(summary_file_path + "/" + "env_params.json")
 params_manager.export_agent_params(summary_file_path + "/" + "agent_params.json")
@@ -153,6 +158,8 @@ if __name__ == "__main__":
             global_step_num += 1
             #env.render()
             print("Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
+            writer.add_scalar("main/reward", reward, global_step_num)
         print("Episode#:", episode, "\t ep_reward=", ep_reward)
+        writer.add_scalar("main/ep_reward", ep_reward, global_step_num)
 
 
