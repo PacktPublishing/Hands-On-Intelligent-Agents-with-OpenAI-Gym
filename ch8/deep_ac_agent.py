@@ -37,9 +37,40 @@ if torch.cuda.is_available() and use_cuda:
     torch.cuda.manual_seed_all(seed)
 
 
-class Deep_AC(torch.nn.Module):
-    def __init__(self, input_shape, actor_shape, critic_shape, params):
-        super(Deep_AC, self).__init__()
+class ShallowActorCritic(torch.nn.Module):
+    def __init__(self, input_shape, actor_shape, critic_shape, params=None):
+        super(ShallowActorCritic, self).__init__()
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 256),
+                                          torch.nn.ReLU())
+        self.layer2 = torch.nn.Sequential(torch.nn.Linear(256, 128),
+                                          torch.nn.ReLU())
+        self.actor_mu = torch.nn.Linear(128, actor_shape)
+        self.actor_sigma = torch.nn.Linear(128, actor_shape)
+        self.critic = torch.nn.Linear(128, critic_shape)
+
+    def forward(self, x):
+        x.requires_grad_()
+        x = x.to(device)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        actor_mu = self.actor_mu(x)
+        actor_sigma = self.actor_sigma(x)
+        critic = self.critic(x)
+        return actor_mu, actor_sigma, critic
+
+class DeepActorCritic(torch.nn.Module):
+    def __init__(self, input_shape, actor_shape, critic_shape, params=None):
+        """
+        Deep convolutional Neural Network to represent both policy  (Actor) and a value function (Critic).
+        The Policy is parametrized using a Gaussian distribution with mean mu and variance sigma
+        The Actor's policy parameters (mu, sigma) and the Critic's Value (value) are output by the deep CNN implemented
+        in this class.
+        :param input_shape:
+        :param actor_shape:
+        :param critic_shape:
+        :param params:
+        """
+        super(DeepActorCritic, self).__init__()
         self.layer1 = torch.nn.Sequential(torch.nn.Conv2d(input_shape[2], 128, 3, stride=1, padding=0),
                                           torch.nn.ReLU())
         self.layer2 = torch.nn.Sequential(torch.nn.Conv2d(128, 64, 3, stride=1, padding=0),
