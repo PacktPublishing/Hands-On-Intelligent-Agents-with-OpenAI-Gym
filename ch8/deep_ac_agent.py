@@ -85,7 +85,7 @@ class DeepActorCritic(torch.nn.Module):
 
     def forward(self, x):
         x.requires_grad_()
-        x = x.cuda()
+        x = x.to(device)
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
@@ -97,7 +97,7 @@ class DeepActorCritic(torch.nn.Module):
         return actor_mu, actor_sigma, critic
 
 
-class Deep_AC_Agent(object):
+class DeepActorCriticAgent(object):
     def __init__(self, state_shape, action_shape, agent_params):
         """
         An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
@@ -107,7 +107,10 @@ class Deep_AC_Agent(object):
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.params = agent_params
-        self.actor_critic = Deep_AC(self.state_shape, self.action_shape, 1, self.params).to(device)
+        if len(self.state_shape) == 3:  # Screen image is the input to the agent
+            self.actor_critic = DeepActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+        else:  # Input is a (single dimensional) vector
+            self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
         self.policy = self.multi_variate_gaussian_policy
         self.optimizer = torch.optim.RMSprop(self.actor_critic.parameters(), lr=1e-3)
         self.gamma = self.params['gamma']
@@ -125,24 +128,36 @@ class Deep_AC_Agent(object):
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
-        self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma)
+        if len(self.mu.shape) == 0: # See if mu is a scalar
+            #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
+            self.mu.unsqueeze_(0)
+        self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma, validate_args=True)
         return(self.action_distribution)
 
 
     def preproc_obs(self, obs):
-        #  Make sure the obs are in this order: C x W x H and add a batch dimension
-        obs = np.reshape(obs, (obs.shape[2], obs.shape[1], obs.shape[0]))
-        obs = np.resize(obs, (3, 84, 84))
+        if len(obs.shape) == 3:
+            #  Make sure the obs are in this order: C x W x H and add a batch dimension
+            obs = np.reshape(obs, (obs.shape[2], obs.shape[1], obs.shape[0]))
+            obs = np.resize(obs, (3, 84, 84))
         #  Convert to torch Tensor, add a batch dimension, convert to float repr
         obs = torch.from_numpy(obs).unsqueeze(0).float()
         return obs
+
+    def process_action(self, action):
+        if len(action.shape) == 0:
+            action = action.unsqueeze(0)
+        if len(action.shape) > 1:
+            action[1] = torch.clamp(action[1], 0.0, 1.0)
+        if len(action.shape) > 2:
+            action[2] = torch.clamp(action[2], 0.0, 1.0) + 1e-4
+        return action
 
     def get_action(self, obs):
         obs = self.preproc_obs(obs)
         action_distribution = self.policy(obs)
         action = action_distribution.sample().squeeze().to(torch.device("cpu"))
-        action[1] = torch.clamp(action[1], 0.0, 1.0)
-        action[2] = torch.clamp(action[2], 0.0, 1.0) + 1e-4
+        action = self.process_action(action)
         return action
 
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
@@ -171,7 +186,7 @@ if __name__ == "__main__":
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.shape[0]
     agent_params = params_manager.get_agent_params()
-    agent = Deep_AC_Agent(observation_shape, action_shape, agent_params)
+    agent = DeepActorCriticAgent(observation_shape, action_shape, agent_params)
 
     for episode in range(agent_params["max_num_episodes"]):
         obs = env.reset()
@@ -182,7 +197,6 @@ if __name__ == "__main__":
             action = agent.get_action(obs).numpy()
             next_obs, reward, done, info = env.step(action)
             agent.learn_td_ac(obs, action, reward, next_obs, done)
-
             obs = next_obs
             ep_reward += reward
             step_num += 1
