@@ -174,7 +174,7 @@ class DeepActorCriticAgent(object):
         v_st = self.value
         _ = self.policy(self.preproc_obs(s_tp1))  # This call populates V(s_t+1) in self.value
         v_stp1 = self.value
-        td_err = r + self.gamma * v_stp1 - v_st
+        td_err = torch.tensor(r) + self.gamma * v_stp1 - v_st
         loss = - torch.sum(policy_loss + td_err)
         writer.add_scalar("main/loss", loss, global_step_num)
         self.optimizer.zero_grad()
