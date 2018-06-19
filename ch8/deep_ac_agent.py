@@ -3,6 +3,10 @@ import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
 import gym
+try:
+    import roboschool
+except ImportError:
+    pass
 from argparse import ArgumentParser
 from datetime import datetime
 from tensorboardX import SummaryWriter
@@ -170,12 +174,14 @@ class DeepActorCriticAgent(object):
         :param done: Whether or not the episode ends/completed at time step t
         :return: None. The internal Actor-Critic parameters are updated
         """
-        policy_loss = self.action_distribution.log_prob(torch.tensor(a_t))  # The call to self.policy(s_t) will also calculate and store V(s_t) in self.value
+        policy_loss = self.policy(self.preproc_obs(s_t)).log_prob(torch.tensor(a_t))
+        # The call to self.policy(s_t) will also calculate and store V(s_t) in self.value
         v_st = self.value
         _ = self.policy(self.preproc_obs(s_tp1))  # This call populates V(s_t+1) in self.value
         v_stp1 = self.value
-        td_err = torch.tensor(r) + self.gamma * v_stp1 - v_st
-        loss = - torch.sum(policy_loss + td_err)
+        td_target = torch.tensor(r) + self.gamma * v_stp1
+        td_err = td_target - v_st
+        loss = - torch.mean(policy_loss + td_err.pow(2))
         writer.add_scalar("main/loss", loss, global_step_num)
         self.optimizer.zero_grad()
         loss.backward()
