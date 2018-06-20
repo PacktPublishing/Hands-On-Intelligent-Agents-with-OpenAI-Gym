@@ -189,6 +189,19 @@ class DeepActorCriticAgent(object):
             g_t_n_s.append(g_t_n)
         return g_t_n_s.reverse()
 
+    def calculate_loss(self, td_targets):
+        """
+        Calculates the critic and actor losses using the td_targets and self.trajectory
+        :param td_targets:
+        :return:
+        """
+        n_step_trajectory = Transition(*zip(*self.trajectory))
+        v_s_batch = n_step_trajectory.value_s
+        log_prob_a_batch = n_step_trajectory.log_prob_a
+        td_err = td_targets - v_s_batch
+        policy_loss = - log_prob_a_batch
+        loss = torch.mean(policy_loss + td_err.pow(2))
+        return loss
 
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
         """
