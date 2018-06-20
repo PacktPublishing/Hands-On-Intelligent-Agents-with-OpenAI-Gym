@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
+import torch.nn.functional as F
 import gym
 try:
     import roboschool
@@ -105,12 +106,13 @@ class DeepActorCritic(torch.nn.Module):
 
 
 class DeepActorCriticAgent(object):
-    def __init__(self, state_shape, action_shape, agent_params):
+    def __init__(self, env_name, state_shape, action_shape, agent_params):
         """
         An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
         :param state_shape:
         :param action_shape:
         """
+        self.env = gym.make(env_name)
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.params = agent_params
@@ -121,7 +123,9 @@ class DeepActorCriticAgent(object):
         self.policy = self.multi_variate_gaussian_policy
         self.optimizer = torch.optim.RMSprop(self.actor_critic.parameters(), lr=1e-3)
         self.gamma = self.params['gamma']
-        self.trajectory = []  # Stores the trajectory of the agent as a sequence of Transitions
+        self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
+        self.rewards = []  #  Contains the rewards obtained from the env at every step
+        self.global_step_num = 0
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -151,11 +155,8 @@ class DeepActorCriticAgent(object):
         obs = torch.from_numpy(obs).unsqueeze(0).float()
         return obs
 
-    def preproc_batch_obs(self, obs_batch):
-        return torch.tensor([ self.preproc_obs(o) for o in obs_batch])
-
-
     def process_action(self, action):
+        action = action.squeeze().to(torch.device("cpu"))
         if len(action.shape) == 0:
             action = action.unsqueeze(0)
         if len(action.shape) > 1:
@@ -168,7 +169,7 @@ class DeepActorCriticAgent(object):
         obs = self.preproc_obs(obs)
         action_distribution = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
         value = self.value
-        action = action_distribution.sample().squeeze().to(torch.device("cpu"))
+        action = action_distribution.sample()
         log_prob_a = action_distribution.log_prob(action)
         action = self.process_action(action)
         self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
@@ -183,24 +184,27 @@ class DeepActorCriticAgent(object):
         :return: The n-step return for each state in the n_step_transitions
         """
         g_t_n_s = list()
-        g_t_n = 0 if done else self.actor_critic(self.preproc_obs(final_state))[2]
-        for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
-            g_t_n = r_t + self.gamma * g_t_n
-            g_t_n_s.append(g_t_n)
-        return g_t_n_s.reverse()
+        with torch.no_grad():
+            g_t_n = 0 if done else self.actor_critic(self.preproc_obs(final_state))[2].cpu()
+            for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
+                g_t_n = torch.tensor(r_t) + self.gamma * g_t_n
+                g_t_n_s.insert(0, g_t_n)  # n-step returns inserted to the left to maintain correct index order
+            return g_t_n_s
 
-    def calculate_loss(self, td_targets):
+    def calculate_loss(self, trajectory, td_targets):
         """
         Calculates the critic and actor losses using the td_targets and self.trajectory
         :param td_targets:
         :return:
         """
-        n_step_trajectory = Transition(*zip(*self.trajectory))
+        n_step_trajectory = Transition(*zip(*trajectory))
         v_s_batch = n_step_trajectory.value_s
         log_prob_a_batch = n_step_trajectory.log_prob_a
-        td_err = td_targets - v_s_batch
-        policy_loss = - log_prob_a_batch
-        loss = torch.mean(policy_loss + td_err.pow(2))
+        # td_err = torch.tensor(td_targets) - torch.tensor(v_s_batch)
+        critic_loss = F.smooth_l1_loss(torch.tensor(v_s_batch, requires_grad=True), torch.tensor(td_targets))
+        #critic_loss = torch.nn.functional.mse_loss(torch.tensor(v_s_batch), torch.tensor(td_targets))
+        actor_loss = - torch.tensor(log_prob_a_batch).mean()
+        loss = actor_loss + critic_loss
         return loss
 
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
