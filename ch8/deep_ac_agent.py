@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
+import torch.multiprocessing as mp
 import torch.nn.functional as F
 import gym
 try:
@@ -229,6 +230,35 @@ class DeepActorCriticAgent(object):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+    def learn(self, n_th_observation, done):
+        td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
+        loss = self.calculate_loss(self.trajectory, td_targets)
+        writer.add_scalar("agent/loss", loss, self.global_step_num)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+    def run(self, max_episodes, n_step_learning_step_thresh):
+        for episode in range(max_episodes):
+            obs = self.env.reset()
+            done = False
+            ep_reward = 0.0
+            step_num = 0
+            while not done:
+                action = self.get_action(obs).numpy()
+                next_obs, reward, done, _ = self.env.step(action)
+                self.rewards.append(reward)
+                step_num +=1
+                if step_num >= n_step_learning_step_thresh or done:
+                    self.learn(next_obs, done)
+                obs = next_obs
+                ep_reward += reward
+                self.global_step_num += 1
+                print("Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
+                writer.add_scalar("agent/reward", reward, self.global_step_num)
+            print("Episode#:", episode, "\t ep_reward=", ep_reward)
+            writer.add_scalar("agent/ep_reward", ep_reward, self.global_step_num)
 
 
 if __name__ == "__main__":
