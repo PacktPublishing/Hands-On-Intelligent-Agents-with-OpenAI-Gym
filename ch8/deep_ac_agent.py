@@ -166,9 +166,12 @@ class DeepActorCriticAgent(object):
 
     def get_action(self, obs):
         obs = self.preproc_obs(obs)
-        action_distribution = self.policy(obs)
+        action_distribution = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
+        value = self.value
         action = action_distribution.sample().squeeze().to(torch.device("cpu"))
+        log_prob_a = action_distribution.log_prob(action)
         action = self.process_action(action)
+        self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
         return action
 
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
