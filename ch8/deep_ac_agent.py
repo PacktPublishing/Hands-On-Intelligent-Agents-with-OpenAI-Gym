@@ -266,25 +266,33 @@ if __name__ == "__main__":
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.shape[0]
     agent_params = params_manager.get_agent_params()
-    agent = DeepActorCriticAgent(observation_shape, action_shape, agent_params)
+    agent = DeepActorCriticAgent(args.env_name, observation_shape, action_shape, agent_params)
+    mp.set_start_method('spawn')
 
-    for episode in range(agent_params["max_num_episodes"]):
-        obs = env.reset()
-        done = False
-        ep_reward = 0
-        step_num = 0
-        while not done:
-            action = agent.get_action(obs).numpy()
-            next_obs, reward, done, info = env.step(action)
-            agent.learn_td_ac(obs, action, reward, next_obs, done)
-            obs = next_obs
-            ep_reward += reward
-            step_num += 1
-            global_step_num += 1
-            #env.render()
-            print("Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
-            writer.add_scalar("main/reward", reward, global_step_num)
-        print("Episode#:", episode, "\t ep_reward=", ep_reward)
-        writer.add_scalar("main/ep_reward", ep_reward, global_step_num)
+    if agent_params["learner"] == "n_step_TD_AC":
+       p = mp.Process(target=agent.run, args=(agent_params["max_num_episodes"], agent_params["learning_step_thresh"]))
+       p.start()
+
+
+    elif agent_params["learner"] == "1_step_TD_AC":
+        for episode in range(agent_params["max_num_episodes"]):
+            obs = env.reset()
+            done = False
+            ep_reward = 0
+            step_num = 0
+            while not done:
+                action = agent.get_action(obs).numpy()
+                next_obs, reward, done, info = env.step(action)
+                agent.learn_td_ac(obs, action, reward, next_obs, done)
+                obs = next_obs
+                ep_reward += reward
+                step_num += 1
+                global_step_num += 1
+                #env.render()
+                print("Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
+                writer.add_scalar("main/reward", reward, global_step_num)
+            print("Episode#:", episode, "\t ep_reward=", ep_reward)
+            writer.add_scalar("main/ep_reward", ep_reward, global_step_num)
+    p.join()
 
 
