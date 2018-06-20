@@ -174,6 +174,22 @@ class DeepActorCriticAgent(object):
         self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
         return action
 
+    def calculate_n_step_return(self, n_step_rewards, final_state, done, gamma):
+        """
+        Calculates the n-step return for each state in the input-trajectory/n_step_transitions
+        :param n_step_rewards: List of rewards for each step
+        :param final_state: Final state in this n_step_transition/trajectory
+        :param done: True rf the final state is a terminal state if not, False
+        :return: The n-step return for each state in the n_step_transitions
+        """
+        g_t_n_s = list()
+        g_t_n = 0 if done else self.actor_critic(self.preproc_obs(final_state))[2]
+        for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
+            g_t_n = r_t + self.gamma * g_t_n
+            g_t_n_s.append(g_t_n)
+        return g_t_n_s.reverse()
+
+
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
         """
         Learn using (1-step) Temporal Difference Actor-Critic policy gradient
@@ -196,6 +212,7 @@ class DeepActorCriticAgent(object):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
 
 if __name__ == "__main__":
     env = gym.make(args.env_name)
