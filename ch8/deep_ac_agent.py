@@ -9,6 +9,7 @@ except ImportError:
     pass
 from argparse import ArgumentParser
 from datetime import datetime
+from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 
@@ -39,6 +40,8 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 if torch.cuda.is_available() and use_cuda:
     torch.cuda.manual_seed_all(seed)
+
+Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
 
 class ShallowActorCritic(torch.nn.Module):
@@ -118,6 +121,7 @@ class DeepActorCriticAgent(object):
         self.policy = self.multi_variate_gaussian_policy
         self.optimizer = torch.optim.RMSprop(self.actor_critic.parameters(), lr=1e-3)
         self.gamma = self.params['gamma']
+        self.trajectory = []  # Stores the trajectory of the agent as a sequence of Transitions
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -138,7 +142,6 @@ class DeepActorCriticAgent(object):
         self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma, validate_args=True)
         return(self.action_distribution)
 
-
     def preproc_obs(self, obs):
         if len(obs.shape) == 3:
             #  Make sure the obs are in this order: C x W x H and add a batch dimension
@@ -147,6 +150,10 @@ class DeepActorCriticAgent(object):
         #  Convert to torch Tensor, add a batch dimension, convert to float repr
         obs = torch.from_numpy(obs).unsqueeze(0).float()
         return obs
+
+    def preproc_batch_obs(self, obs_batch):
+        return torch.tensor([ self.preproc_obs(o) for o in obs_batch])
+
 
     def process_action(self, action):
         if len(action.shape) == 0:
