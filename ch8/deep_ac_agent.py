@@ -235,12 +235,17 @@ class DeepActorCriticAgent(object):
     def learn(self, n_th_observation, done):
         td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
         loss = self.calculate_loss(self.trajectory, td_targets)
-        writer.add_scalar("agent/loss", loss, self.global_step_num)
+        writer.add_scalar(self.actor_name + "/loss", loss, self.global_step_num)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        #! TODO: Study the effect of accumulating the trajectories (xp Memory) rather than clearing
+        self.trajectory.clear()
+        self.rewards.clear()
 
-    def run(self, max_episodes, n_step_learning_step_thresh):
+    def run(self, seed, max_episodes, n_step_learning_step_thresh):
+        self.seed = seed
+        self.actor_name = "actor" + str(seed)
         for episode in range(max_episodes):
             obs = self.env.reset()
             done = False
@@ -256,10 +261,10 @@ class DeepActorCriticAgent(object):
                 obs = next_obs
                 ep_reward += reward
                 self.global_step_num += 1
-                print("Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
-                writer.add_scalar("agent/reward", reward, self.global_step_num)
-            print("Episode#:", episode, "\t ep_reward=", ep_reward)
-            writer.add_scalar("agent/ep_reward", ep_reward, self.global_step_num)
+                #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
+                writer.add_scalar(self.actor_name + "/reward", reward, self.global_step_num)
+            print(self.actor_name+ ":Episode#:", episode, "\t ep_reward=", ep_reward)
+            writer.add_scalar(self.actor_name + "/ep_reward", ep_reward, self.global_step_num)
 
 
 if __name__ == "__main__":
@@ -271,8 +276,10 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
 
     if agent_params["learner"] == "n_step_TD_AC":
-       p = mp.Process(target=agent.run, args=(agent_params["max_num_episodes"], agent_params["learning_step_thresh"]))
-       p.start()
+       actor_procs = [mp.Process(target=agent.run,
+                       args=(i, agent_params["max_num_episodes"], agent_params["learning_step_thresh"]))
+                      for i in range(agent_params["num_actors"])]
+       [p.start() for p in actor_procs]
 
 
     elif agent_params["learner"] == "1_step_TD_AC":
@@ -294,6 +301,7 @@ if __name__ == "__main__":
                 writer.add_scalar("main/reward", reward, global_step_num)
             print("Episode#:", episode, "\t ep_reward=", ep_reward)
             writer.add_scalar("main/ep_reward", ep_reward, global_step_num)
-    p.join()
+
+    [p.join() for p in actor_procs]
 
 
