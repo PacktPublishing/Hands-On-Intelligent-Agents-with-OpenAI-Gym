@@ -28,7 +28,7 @@ args = parser.parse_args()
 global_step_num = 0
 
 params_manager= ParamsManager(args.params_file)
-seed = params_manager.get_agent_params()['seed']
+seed = params_manager.get_agent_params()['seed']  # With the intent to make the results reproducible
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
 summary_file_path= summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_path)
@@ -122,7 +122,7 @@ class DeepActorCriticAgent(object):
         else:  # Input is a (single dimensional) vector
             self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
         self.policy = self.multi_variate_gaussian_policy
-        self.optimizer = torch.optim.RMSprop(self.actor_critic.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.actor_critic.parameters(), lr=1e-3)
         self.gamma = self.params['gamma']
         self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
         self.rewards = []  #  Contains the rewards obtained from the env at every step
@@ -201,10 +201,11 @@ class DeepActorCriticAgent(object):
         n_step_trajectory = Transition(*zip(*trajectory))
         v_s_batch = n_step_trajectory.value_s
         log_prob_a_batch = n_step_trajectory.log_prob_a
-        # td_err = torch.tensor(td_targets) - torch.tensor(v_s_batch)
+        td_err = torch.tensor(td_targets) - torch.tensor(v_s_batch)
         critic_loss = F.smooth_l1_loss(torch.tensor(v_s_batch, requires_grad=True), torch.tensor(td_targets))
         #critic_loss = torch.nn.functional.mse_loss(torch.tensor(v_s_batch), torch.tensor(td_targets))
-        actor_loss = - torch.tensor(log_prob_a_batch).mean()
+        actor_loss = - torch.tensor(log_prob_a_batch) * td_err  # td_err is an unbiased estimate of A (advantage)
+        actor_loss = actor_loss.mean()
         loss = actor_loss + critic_loss
         return loss
 
