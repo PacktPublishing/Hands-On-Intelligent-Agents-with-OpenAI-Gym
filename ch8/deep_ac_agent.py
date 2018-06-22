@@ -49,13 +49,13 @@ Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 class ShallowActorCritic(torch.nn.Module):
     def __init__(self, input_shape, actor_shape, critic_shape, params=None):
         super(ShallowActorCritic, self).__init__()
-        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 256),
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
                                           torch.nn.ReLU())
-        self.layer2 = torch.nn.Sequential(torch.nn.Linear(256, 128),
+        self.layer2 = torch.nn.Sequential(torch.nn.Linear(32, 16),
                                           torch.nn.ReLU())
-        self.actor_mu = torch.nn.Linear(128, actor_shape)
-        self.actor_sigma = torch.nn.Linear(128, actor_shape)
-        self.critic = torch.nn.Linear(128, critic_shape)
+        self.actor_mu = torch.nn.Linear(16, actor_shape)
+        self.actor_sigma = torch.nn.Linear(16, actor_shape)
+        self.critic = torch.nn.Linear(16, critic_shape)
 
     def forward(self, x):
         x.requires_grad_()
@@ -137,7 +137,6 @@ class DeepActorCriticAgent(object):
         mu, sigma, value = self.actor_critic(obs)
         mu = torch.clamp(mu, -1, 1).squeeze()  # Let mean be constrained to lie between -1 & 1
         sigma = torch.nn.Softplus()(sigma).squeeze() + 1e-7  # Let sigma be (smoothly) +ve
-        self.sigma = sigma
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
@@ -186,7 +185,7 @@ class DeepActorCriticAgent(object):
         """
         g_t_n_s = list()
         with torch.no_grad():
-            g_t_n = 0 if done else self.actor_critic(self.preproc_obs(final_state))[2].cpu()
+            g_t_n = torch.tensor([[0]]).float() if done else self.actor_critic(self.preproc_obs(final_state))[2].cpu()
             for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
                 g_t_n = torch.tensor(r_t) + self.gamma * g_t_n
                 g_t_n_s.insert(0, g_t_n)  # n-step returns inserted to the left to maintain correct index order
@@ -201,12 +200,20 @@ class DeepActorCriticAgent(object):
         n_step_trajectory = Transition(*zip(*trajectory))
         v_s_batch = n_step_trajectory.value_s
         log_prob_a_batch = n_step_trajectory.log_prob_a
-        td_err = torch.tensor(td_targets) - torch.tensor(v_s_batch)
-        critic_loss = F.smooth_l1_loss(torch.tensor(v_s_batch, requires_grad=True), torch.tensor(td_targets))
-        #critic_loss = torch.nn.functional.mse_loss(torch.tensor(v_s_batch), torch.tensor(td_targets))
-        actor_loss = - torch.tensor(log_prob_a_batch) * td_err  # td_err is an unbiased estimate of A (advantage)
-        actor_loss = actor_loss.mean()
+        actor_loss, critic_loss = [], []
+        for td_target, critic_pred, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
+            td_err = td_target - critic_pred
+            actor_loss.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
+            #critic_loss.append(F.smooth_l1_loss(critic_pred, td_target))
+            critic_loss.append(F.mse_loss(critic_pred, td_target))
+        actor_loss = torch.stack(actor_loss).mean()
+        critic_loss = torch.stack(critic_loss).mean()
         loss = actor_loss + critic_loss
+
+        writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
+        writer.add_scalar(self.actor_name + "/actor_loss", actor_loss, self.global_step_num)
+        writer.add_scalar(self.actor_name + "/loss", loss, self.global_step_num)
+
         return loss
 
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
@@ -235,8 +242,8 @@ class DeepActorCriticAgent(object):
     def learn(self, n_th_observation, done):
         td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
         loss = self.calculate_loss(self.trajectory, td_targets)
-        writer.add_scalar(self.actor_name + "/loss", loss, self.global_step_num)
         self.optimizer.zero_grad()
+        a = list(self.actor_critic.parameters())
         loss.backward()
         self.optimizer.step()
         #! TODO: Study the effect of accumulating the trajectories (xp Memory) rather than clearing
@@ -258,6 +265,7 @@ class DeepActorCriticAgent(object):
                 step_num +=1
                 if step_num >= n_step_learning_step_thresh or done:
                     self.learn(next_obs, done)
+                    step_num = 0
                 obs = next_obs
                 ep_reward += reward
                 self.global_step_num += 1
