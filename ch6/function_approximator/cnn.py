@@ -2,7 +2,7 @@ import torch
 
 
 class CNN(torch.nn.Module):
-    def __init__(self, input_shape, output_shape, device="cpu"):
+    def __init__(self, input_shape, output_shape, device=torch.device("cpu")):
         """
         A Convolution Neural Network (CNN) class to approximate functions with visual/image inputs
 
