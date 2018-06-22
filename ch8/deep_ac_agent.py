@@ -63,7 +63,7 @@ class ShallowActor(torch.nn.Module):
 
 
 class ShallowCritic(torch.nn.Module):
-    def __init__(self, input_shape, output_shape):
+    def __init__(self, input_shape, output_shape=1):
         super(ShallowCritic, self).__init__()
         self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
                                           torch.nn.ReLU())
@@ -136,22 +136,22 @@ class DeepActorCritic(torch.nn.Module):
 
 
 class DeepActorCriticAgent(object):
-    def __init__(self, env_name, state_shape, action_shape, agent_params):
+    def __init__(self, env_name, agent_params):
         """
         An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
         :param state_shape:
         :param action_shape:
         """
         self.env = gym.make(env_name)
-        self.state_shape = state_shape
-        self.action_shape = action_shape
+        self.state_shape = self.env.observation_space.shape
+        self.action_shape = self.env.action_space.shape[0]
         self.params = agent_params
         if len(self.state_shape) == 3:  # Screen image is the input to the agent
             self.actor_critic = DeepActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
         else:  # Input is a (single dimensional) vector
             #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
             self.actor = ShallowActor(self.state_shape, self.action_shape).to(device)
-            self.critic = ShallowCritic(self.state_shape, self.action_shape).to(device)
+            self.critic = ShallowCritic(self.state_shape, 1).to(device)
         self.policy = self.multi_variate_gaussian_policy
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
@@ -217,7 +217,7 @@ class DeepActorCriticAgent(object):
         with torch.no_grad():
             g_t_n = torch.tensor([[0]]).float() if done else self.critic(self.preproc_obs(final_state)).cpu()
             for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
-                g_t_n = torch.tensor(r_t) + self.gamma * g_t_n
+                g_t_n = torch.tensor(r_t).float() + self.gamma * g_t_n
                 g_t_n_s.insert(0, g_t_n)  # n-step returns inserted to the left to maintain correct index order
             return g_t_n_s
 
@@ -309,11 +309,8 @@ class DeepActorCriticAgent(object):
 
 
 if __name__ == "__main__":
-    env = gym.make(args.env_name)
-    observation_shape = env.observation_space.shape
-    action_shape = env.action_space.shape[0]
     agent_params = params_manager.get_agent_params()
-    agent = DeepActorCriticAgent(args.env_name, observation_shape, action_shape, agent_params)
+    agent = DeepActorCriticAgent(args.env_name, agent_params)
     mp.set_start_method('spawn')
 
     if agent_params["learner"] == "n_step_TD_AC":
@@ -322,8 +319,8 @@ if __name__ == "__main__":
                       for i in range(agent_params["num_actors"])]
        [p.start() for p in actor_procs]
 
-
     elif agent_params["learner"] == "1_step_TD_AC":
+        env = gym.make(args.env_name)
         for episode in range(agent_params["max_num_episodes"]):
             obs = env.reset()
             done = False
