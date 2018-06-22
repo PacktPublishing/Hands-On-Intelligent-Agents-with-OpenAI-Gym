@@ -10,7 +10,6 @@
     "use_cuda": true,
     "max_num_episodes": 50000,
     "gamma": 0.99,
-    "learner": "n_step_TD_AC",
     "learning_step_thresh": 5
 
   }

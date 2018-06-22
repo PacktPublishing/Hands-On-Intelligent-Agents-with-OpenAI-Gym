@@ -238,29 +238,6 @@ class DeepActorCriticAgent(mp.Process):
 
         return actor_loss, critic_loss
 
-    def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
-        """
-        Learn using (1-step) Temporal Difference Actor-Critic policy gradient
-        :param s_t: Observation/state at time step t
-        :param a_t: Action taken at time step t
-        :param r: Reward obtained for taking a_t at time step t
-        :param s_tp1: Observation/reward at time step t+1
-        :param done: Whether or not the episode ends/completed at time step t
-        :return: None. The internal Actor-Critic parameters are updated
-        """
-        policy_loss = self.policy(self.preproc_obs(s_t)).log_prob(torch.tensor(a_t))
-        # The call to self.policy(s_t) will also calculate and store V(s_t) in self.value
-        v_st = self.value
-        _ = self.policy(self.preproc_obs(s_tp1))  # This call populates V(s_t+1) in self.value
-        v_stp1 = self.value
-        td_target = torch.tensor(r) + self.gamma * v_stp1
-        td_err = td_target - v_st
-        loss = - torch.mean(policy_loss + td_err.pow(2))
-        writer.add_scalar("main/loss", loss, global_step_num)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
     def learn(self, n_th_observation, done):
         td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
         actor_loss, critic_loss = self.calculate_loss(self.trajectory, td_targets)
@@ -273,7 +250,6 @@ class DeepActorCriticAgent(mp.Process):
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        #! TODO: Study the effect of accumulating the trajectories (xp Memory) rather than clearing
         self.trajectory.clear()
         self.rewards.clear()
 
@@ -317,32 +293,6 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
     mp.log_to_stderr(logging.DEBUG)
 
-    if agent_params["learner"] == "n_step_TD_AC":
-       agent_procs =[DeepActorCriticAgent(id, args.env_name, agent_params) for id in range(agent_params["num_agents"])]
-       [p.start() for p in agent_procs]
-
-    elif agent_params["learner"] == "1_step_TD_AC":
-        env = gym.make(args.env_name)
-        agent = DeepActorCriticAgent(0, args.env_name, agent_params)
-        for episode in range(agent_params["max_num_episodes"]):
-            obs = env.reset()
-            done = False
-            ep_reward = 0
-            step_num = 0
-            while not done:
-                action = agent.get_action(obs)
-                next_obs, reward, done, info = env.step(action)
-                agent.learn_td_ac(obs, action, reward, next_obs, done)
-                obs = next_obs
-                ep_reward += reward
-                step_num += 1
-                global_step_num += 1
-                #env.render()
-                print("Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
-                writer.add_scalar("main/reward", reward, global_step_num)
-            print("Episode#:", episode, "\t ep_reward=", ep_reward)
-            writer.add_scalar("main/ep_reward", ep_reward, global_step_num)
-
+    agent_procs =[DeepActorCriticAgent(id, args.env_name, agent_params) for id in range(agent_params["num_agents"])]
+    [p.start() for p in agent_procs]
     [p.join() for p in agent_procs]
-
-
