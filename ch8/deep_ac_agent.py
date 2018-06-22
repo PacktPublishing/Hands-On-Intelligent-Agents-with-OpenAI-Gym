@@ -46,6 +46,35 @@ if torch.cuda.is_available() and use_cuda:
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
 
+class ShallowActor(torch.nn.Module):
+    def __init__(self, input_shape, output_shape):
+        super(ShallowActor, self).__init__()
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
+                                          torch.nn.ReLU())
+        self.actor_mu = torch.nn.Linear(32, output_shape)
+        self.actor_sigma = torch.nn.Linear(32, output_shape)
+
+    def forward(self, x):
+        x = x.to(device)
+        x = self.layer1(x)
+        mu = self.actor_mu(x)
+        sigma = self.actor_sigma(x)
+        return mu, sigma
+
+
+class ShallowCritic(torch.nn.Module):
+    def __init__(self, input_shape, output_shape):
+        super(ShallowCritic, self).__init__()
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
+                                          torch.nn.ReLU())
+        self.actor = torch.nn.Linear(32, output_shape)
+    def forward(self, x):
+        x = x.to(device)
+        x = self.layer1(x)
+        critic = self.actor(x)
+        return critic
+
+
 class ShallowActorCritic(torch.nn.Module):
     def __init__(self, input_shape, actor_shape, critic_shape, params=None):
         super(ShallowActorCritic, self).__init__()
