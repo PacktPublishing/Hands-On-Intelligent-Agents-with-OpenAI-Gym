@@ -149,9 +149,12 @@ class DeepActorCriticAgent(object):
         if len(self.state_shape) == 3:  # Screen image is the input to the agent
             self.actor_critic = DeepActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
         else:  # Input is a (single dimensional) vector
-            self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+            #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+            self.actor = ShallowActor(self.state_shape, self.action_shape).to(device)
+            self.critic = ShallowCritic(self.state_shape, self.action_shape).to(device)
         self.policy = self.multi_variate_gaussian_policy
-        self.optimizer = torch.optim.Adam(self.actor_critic.parameters(), lr=1e-3)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
         self.gamma = self.params['gamma']
         self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
         self.rewards = []  #  Contains the rewards obtained from the env at every step
@@ -163,7 +166,8 @@ class DeepActorCriticAgent(object):
         :param obs: Agent's observation
         :return: policy, a distribution over actions for the given observation
         """
-        mu, sigma, value = self.actor_critic(obs)
+        mu, sigma = self.actor(obs)
+        value = self.critic(obs)
         [ mu[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
         for i in range(self.action_shape)]  # Clamp each dim of mu based on the (low,high) limits of that action dim
         sigma = torch.nn.Softplus()(sigma).squeeze() + 1e-7  # Let sigma be (smoothly) +ve
@@ -211,7 +215,7 @@ class DeepActorCriticAgent(object):
         """
         g_t_n_s = list()
         with torch.no_grad():
-            g_t_n = torch.tensor([[0]]).float() if done else self.actor_critic(self.preproc_obs(final_state))[2].cpu()
+            g_t_n = torch.tensor([[0]]).float() if done else self.critic(self.preproc_obs(final_state)).cpu()
             for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
                 g_t_n = torch.tensor(r_t) + self.gamma * g_t_n
                 g_t_n_s.insert(0, g_t_n)  # n-step returns inserted to the left to maintain correct index order
@@ -227,20 +231,18 @@ class DeepActorCriticAgent(object):
         v_s_batch = n_step_trajectory.value_s
         log_prob_a_batch = n_step_trajectory.log_prob_a
         actor_loss, critic_loss = [], []
-        for td_target, critic_pred, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
-            td_err = td_target - critic_pred
+        for td_target, critic_prediction, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
+            td_err = td_target - critic_prediction
             actor_loss.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
-            #critic_loss.append(F.smooth_l1_loss(critic_pred, td_target))
-            critic_loss.append(F.mse_loss(critic_pred, td_target))
+            critic_loss.append(F.smooth_l1_loss(critic_prediction, td_target))
+            #critic_loss.append(F.mse_loss(critic_pred, td_target))
         actor_loss = torch.stack(actor_loss).mean()
         critic_loss = torch.stack(critic_loss).mean()
-        loss = actor_loss + critic_loss
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
         writer.add_scalar(self.actor_name + "/actor_loss", actor_loss, self.global_step_num)
-        writer.add_scalar(self.actor_name + "/loss", loss, self.global_step_num)
 
-        return loss
+        return actor_loss, critic_loss
 
     def learn_td_ac(self, s_t, a_t, r, s_tp1, done):
         """
@@ -267,11 +269,16 @@ class DeepActorCriticAgent(object):
 
     def learn(self, n_th_observation, done):
         td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
-        loss = self.calculate_loss(self.trajectory, td_targets)
-        self.optimizer.zero_grad()
-        a = list(self.actor_critic.parameters())
-        loss.backward()
-        self.optimizer.step()
+        actor_loss, critic_loss = self.calculate_loss(self.trajectory, td_targets)
+
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward(retain_graph=True)
+        self.actor_optimizer.step()
+
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
         #! TODO: Study the effect of accumulating the trajectories (xp Memory) rather than clearing
         self.trajectory.clear()
         self.rewards.clear()
