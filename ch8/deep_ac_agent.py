@@ -11,6 +11,7 @@ except ImportError:
     pass
 from argparse import ArgumentParser
 from datetime import datetime
+import logging
 from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
@@ -135,26 +136,19 @@ class DeepActorCritic(torch.nn.Module):
         return actor_mu, actor_sigma, critic
 
 
-class DeepActorCriticAgent(object):
-    def __init__(self, env_name, agent_params):
+class DeepActorCriticAgent(mp.Process):
+    def __init__(self, id, env_name, agent_params):
         """
         An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
         :param state_shape:
         :param action_shape:
         """
-        self.env = gym.make(env_name)
-        self.state_shape = self.env.observation_space.shape
-        self.action_shape = self.env.action_space.shape[0]
+        super(DeepActorCriticAgent, self).__init__()
+        self.id = id
+        self.actor_name = "actor" + str(self.id)
+        self.env_name = env_name
         self.params = agent_params
-        if len(self.state_shape) == 3:  # Screen image is the input to the agent
-            self.actor_critic = DeepActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
-        else:  # Input is a (single dimensional) vector
-            #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
-            self.actor = ShallowActor(self.state_shape, self.action_shape).to(device)
-            self.critic = ShallowCritic(self.state_shape, 1).to(device)
         self.policy = self.multi_variate_gaussian_policy
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
         self.gamma = self.params['gamma']
         self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
         self.rewards = []  #  Contains the rewards obtained from the env at every step
@@ -283,10 +277,20 @@ class DeepActorCriticAgent(object):
         self.trajectory.clear()
         self.rewards.clear()
 
-    def run(self, seed, max_episodes, n_step_learning_step_thresh):
-        self.seed = seed
-        self.actor_name = "actor" + str(seed)
-        for episode in range(max_episodes):
+    def run(self):
+        self.env = gym.make(self.env_name)
+        self.state_shape = self.env.observation_space.shape
+        self.action_shape = self.env.action_space.shape[0]
+        if len(self.state_shape) == 3:  # Screen image is the input to the agent
+            self.actor_critic = DeepActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+        else:  # Input is a (single dimensional) vector
+            #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+            self.actor = ShallowActor(self.state_shape, self.action_shape).to(device)
+            self.critic = ShallowCritic(self.state_shape, 1).to(device)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
+
+        for episode in range(self.params["max_num_episodes"]):
             obs = self.env.reset()
             done = False
             ep_reward = 0.0
@@ -296,7 +300,7 @@ class DeepActorCriticAgent(object):
                 next_obs, reward, done, _ = self.env.step(action)
                 self.rewards.append(reward)
                 step_num +=1
-                if step_num >= n_step_learning_step_thresh or done:
+                if step_num >= self.params["learning_step_thresh"] or done:
                     self.learn(next_obs, done)
                     step_num = 0
                 obs = next_obs
@@ -310,17 +314,16 @@ class DeepActorCriticAgent(object):
 
 if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
-    agent = DeepActorCriticAgent(args.env_name, agent_params)
     mp.set_start_method('spawn')
+    mp.log_to_stderr(logging.DEBUG)
 
     if agent_params["learner"] == "n_step_TD_AC":
-       actor_procs = [mp.Process(target=agent.run,
-                       args=(i, agent_params["max_num_episodes"], agent_params["learning_step_thresh"]))
-                      for i in range(agent_params["num_actors"])]
-       [p.start() for p in actor_procs]
+       agent_procs =[DeepActorCriticAgent(id, args.env_name, agent_params) for id in range(agent_params["num_agents"])]
+       [p.start() for p in agent_procs]
 
     elif agent_params["learner"] == "1_step_TD_AC":
         env = gym.make(args.env_name)
+        agent = DeepActorCriticAgent(0, args.env_name, agent_params)
         for episode in range(agent_params["max_num_episodes"]):
             obs = env.reset()
             done = False
@@ -340,6 +343,6 @@ if __name__ == "__main__":
             print("Episode#:", episode, "\t ep_reward=", ep_reward)
             writer.add_scalar("main/ep_reward", ep_reward, global_step_num)
 
-    [p.join() for p in actor_procs]
+    [p.join() for p in agent_procs]
 
 
