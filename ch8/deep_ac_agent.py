@@ -135,7 +135,8 @@ class DeepActorCriticAgent(object):
         :return: policy, a distribution over actions for the given observation
         """
         mu, sigma, value = self.actor_critic(obs)
-        mu = torch.clamp(mu, -1, 1).squeeze()  # Let mean be constrained to lie between -1 & 1
+        [ mu[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
+        for i in range(self.action_shape)]  # Clamp each dim of mu based on the (low,high) limits of that action dim
         sigma = torch.nn.Softplus()(sigma).squeeze() + 1e-7  # Let sigma be (smoothly) +ve
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
@@ -156,14 +157,10 @@ class DeepActorCriticAgent(object):
         return obs
 
     def process_action(self, action):
-        action = action.squeeze().to(torch.device("cpu"))
-        if len(action.shape) == 0:
-            action = action.unsqueeze(0)
-        if len(action.shape) > 1:
-            action[1] = torch.clamp(action[1], 0.0, 1.0)
-        if len(action.shape) > 2:
-            action[2] = torch.clamp(action[2], 0.0, 1.0) + 1e-4
-        return action
+        [action[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
+         for i in range(self.action_shape)]  # Limit the action to lie between the (low, high) limits of the env
+        action = action.to(torch.device("cpu"))
+        return action.numpy().squeeze(0)  # Convert to numpy ndarray, squeeze and remove the batch dimension
 
     def get_action(self, obs):
         obs = self.preproc_obs(obs)
@@ -259,7 +256,7 @@ class DeepActorCriticAgent(object):
             ep_reward = 0.0
             step_num = 0
             while not done:
-                action = self.get_action(obs).numpy()
+                action = self.get_action(obs)
                 next_obs, reward, done, _ = self.env.step(action)
                 self.rewards.append(reward)
                 step_num +=1
@@ -297,7 +294,7 @@ if __name__ == "__main__":
             ep_reward = 0
             step_num = 0
             while not done:
-                action = agent.get_action(obs).numpy()
+                action = agent.get_action(obs)
                 next_obs, reward, done, info = env.step(action)
                 agent.learn_td_ac(obs, action, reward, next_obs, done)
                 obs = next_obs
