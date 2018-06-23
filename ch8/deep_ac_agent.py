@@ -16,7 +16,8 @@ from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 from function_approximator.shallow import Actor as ShallowActor
 from function_approximator.shallow import Critic as ShallowCritic
-from function_approximator.deep import ActorCritic as DeepActorCritic
+from function_approximator.deep import Actor as DeepActor
+from function_approximator.deep import Critic as DeepCritic
 
 parser = ArgumentParser("deep_ac_agent")
 parser.add_argument("--env-name",
@@ -170,12 +171,14 @@ class DeepActorCriticAgent(mp.Process):
         self.env = gym.make(self.env_name)
         self.state_shape = self.env.observation_space.shape
         self.action_shape = self.env.action_space.shape[0]
+        self.critic_shape = 1
         if len(self.state_shape) == 3:  # Screen image is the input to the agent
-            self.actor_critic = DeepActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+            self.actor= DeepActor(self.state_shape, self.action_shape, device).to(device)
+            self.critic = DeepCritic(self.state_shape, self.critic_shape, device).to(device)
         else:  # Input is a (single dimensional) vector
             #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
-            self.actor = ShallowActor(self.state_shape, self.action_shape).to(device)
-            self.critic = ShallowCritic(self.state_shape, 1).to(device)
+            self.actor = ShallowActor(self.state_shape, self.action_shape, device).to(device)
+            self.critic = ShallowCritic(self.state_shape, self.critic_shape, device).to(device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
 

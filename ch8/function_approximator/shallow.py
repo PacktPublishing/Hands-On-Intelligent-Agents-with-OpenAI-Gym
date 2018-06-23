@@ -18,6 +18,12 @@ class Actor(torch.nn.Module):
         self.actor_sigma = torch.nn.Linear(32, output_shape)
 
     def forward(self, x):
+        """
+        Forward pass through the Actor network. Takes batch_size x observations as input and produces mu and sigma
+        as the outputs
+        :param x: The observations
+        :return: Mean (mu) and Sigma (sigma) for a Gaussian policy
+        """
         x = x.to(self.device)
         x = self.layer1(x)
         mu = self.actor_mu(x)
@@ -39,11 +45,18 @@ class Critic(torch.nn.Module):
         self.device = device
         self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
                                           torch.nn.ReLU())
-        self.actor = torch.nn.Linear(32, output_shape)
+        self.critic= torch.nn.Linear(32, output_shape)
+
     def forward(self, x):
+        """
+        Forward pass through the Critic network. Takes batch_size x observations as input and produces the value
+        estimate as the output
+        :param x: The observations
+        :return: Mean (mu) and Sigma (sigma) for a Gaussian policy
+        """
         x = x.to(self.device)
         x = self.layer1(x)
-        critic = self.actor(x)
+        critic = self.critic(x)
         return critic
 
 
@@ -68,6 +81,13 @@ class ActorCritic(torch.nn.Module):
         self.critic = torch.nn.Linear(16, critic_shape)
 
     def forward(self, x):
+        """
+        Forward pass through the Actor-Critic network. Takes batch_size x observations as input and produces
+        mu, sigma and the value estimate
+        as the outputs
+        :param x: The observations
+        :return: Mean (actor_mu), Sigma (actor_sigma) for a Gaussian policy and the Critic's value estimate (critic)
+        """
         x.requires_grad_()
         x = x.to(self.device)
         x = self.layer1(x)

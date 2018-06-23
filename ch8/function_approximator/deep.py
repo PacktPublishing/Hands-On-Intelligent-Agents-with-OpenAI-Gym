@@ -78,9 +78,8 @@ class Critic(torch.nn.Module):
         x = self.layer3(x)
         x = x.view(x.shape[0], -1)
         x = self.layer4(x)
-        actor_mu = self.actor_mu(x)
-        actor_sigma = self.actor_sigma(x)
-        return actor_mu, actor_sigma
+        critic = self.critic(x)
+        return critic
 
 
 class ActorCritic(torch.nn.Module):
