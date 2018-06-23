@@ -20,11 +20,11 @@ from function_approximator.deep import Actor as DeepActor
 from function_approximator.deep import Critic as DeepCritic
 
 parser = ArgumentParser("deep_ac_agent")
-parser.add_argument("--env-name",
+parser.add_argument("--env", help="Name of the Gym environment",
                     type= str,
                     default="CarRacing-v0",
                     metavar="ENV_ID")
-parser.add_argument("--params-file",
+parser.add_argument("--params-file", help="Path to the parameters file. Default= ./parameters.json",
                     type= str,
                     default="parameters.json",
                     metavar="PFILE.json")
@@ -33,7 +33,7 @@ global_step_num = 0
 
 params_manager= ParamsManager(args.params_file)
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
-summary_file_path= summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+summary_file_path= summary_file_path_prefix + args.env + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_path)
 # Export the parameters as json files to the log directory to keep track of the parameters used in each experiment
 params_manager.export_env_params(summary_file_path + "/" + "env_params.json")
