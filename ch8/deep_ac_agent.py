@@ -16,6 +16,7 @@ from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 from function_approximator.shallow import Actor as ShallowActor
 from function_approximator.shallow import Critic as ShallowCritic
+from function_approximator.deep import ActorCritic as DeepActorCritic
 
 parser = ArgumentParser("deep_ac_agent")
 parser.add_argument("--env-name",
@@ -47,45 +48,6 @@ if torch.cuda.is_available() and use_cuda:
     torch.cuda.manual_seed_all(seed)
 
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
-
-class DeepActorCritic(torch.nn.Module):
-    def __init__(self, input_shape, actor_shape, critic_shape, params=None):
-        """
-        Deep convolutional Neural Network to represent both policy  (Actor) and a value function (Critic).
-        The Policy is parametrized using a Gaussian distribution with mean mu and variance sigma
-        The Actor's policy parameters (mu, sigma) and the Critic's Value (value) are output by the deep CNN implemented
-        in this class.
-        :param input_shape:
-        :param actor_shape:
-        :param critic_shape:
-        :param params:
-        """
-        super(DeepActorCritic, self).__init__()
-        self.layer1 = torch.nn.Sequential(torch.nn.Conv2d(input_shape[2], 128, 3, stride=1, padding=0),
-                                          torch.nn.ReLU())
-        self.layer2 = torch.nn.Sequential(torch.nn.Conv2d(128, 64, 3, stride=1, padding=0),
-                                          torch.nn.ReLU())
-        self.layer3 = torch.nn.Sequential(torch.nn.Conv2d(64, 32, 3, stride=1, padding=0),
-                                          torch.nn.ReLU())
-        self.layer4 = torch.nn.Sequential(torch.nn.Linear(32 * 78 * 78, 2048),
-                                          torch.nn.ReLU())
-        self.actor_mu = torch.nn.Linear(2048, actor_shape)
-        self.actor_sigma = torch.nn.Linear(2048, actor_shape)
-        self.critic = torch.nn.Linear(2048, critic_shape)
-
-    def forward(self, x):
-        x.requires_grad_()
-        x = x.to(device)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = x.view(x.shape[0], -1)
-        x = self.layer4(x)
-        actor_mu = self.actor_mu(x)
-        actor_sigma = self.actor_sigma(x)
-        critic = self.critic(x)
-        return actor_mu, actor_sigma, critic
-
 
 class DeepActorCriticAgent(mp.Process):
     def __init__(self, id, env_name, agent_params):
