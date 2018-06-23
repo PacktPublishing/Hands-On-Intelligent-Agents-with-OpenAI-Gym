@@ -28,6 +28,10 @@ parser.add_argument("--params-file", help="Path to the parameters file. Default=
                     type= str,
                     default="parameters.json",
                     metavar="PFILE.json")
+parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
+                    type=str,
+                    default="trained_models/",
+                    metavar="MODEL_DIR")
 args = parser.parse_args()
 global_step_num = 0
 
@@ -67,6 +71,8 @@ class DeepActorCriticAgent(mp.Process):
         self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
         self.rewards = []  #  Contains the rewards obtained from the env at every step
         self.global_step_num = 0
+        self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
+        self.best_reward = - float("inf")
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -167,6 +173,28 @@ class DeepActorCriticAgent(mp.Process):
         self.trajectory.clear()
         self.rewards.clear()
 
+    def save(self):
+        model_file_name = self.params["model_dir"] + "A2C_" + self.env_name + ".ptm"
+        agent_state = {"Actor": self.actor.state_dict(),
+                       "Critic": self.critic.state_dict(),
+                       "best_mean_reward": self.best_mean_reward,
+                       "best_reward": self.best_reward}
+        torch.save(agent_state, model_file_name)
+        print("Agent's state is saved to", model_file_name)
+
+    def load(self):
+        model_file_name = self.params["model_dir"] + "A3C_" + self.env_name + ".ptm"
+        agent_state = torch.load(model_file_name, map_location= lambda storage, loc: storage)
+        self.actor.load_state_dict(agent_state["Actor"])
+        self.critic.load_state_dict(agent_state["Critic"])
+        self.actor.to(device)
+        self.critic.to(device)
+        self.best_mean_reward = agent_state["best_mean_reward"]
+        self.best_reward = agent_state["best_reward"]
+        print("Loaded Advantage Actor-Critic model state from", model_file_name,
+              " which fetched a best mean reward of:", self.best_mean_reward,
+              " and an all time best reward of:", self.best_reward)
+
     def run(self):
         self.env = gym.make(self.env_name)
         self.state_shape = self.env.observation_space.shape
@@ -182,6 +210,18 @@ class DeepActorCriticAgent(mp.Process):
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
 
+        # Handle loading and saving of trained Agent models
+        episode_rewards = list()
+        prev_checkpoint_mean_ep_rew = self.best_mean_reward
+        num_improved_episodes_before_checkpoint = 0  # To keep track of the num of ep with higher perf to save model
+        #print("Using agent_params:", self.params)
+        if self.params['load_trained_model']:
+            try:
+                self.load()
+                prev_checkpoint_mean_ep_rew = self.best_mean_reward
+            except FileNotFoundError:
+                print("WARNING: No trained model found for this environment. Training from scratch.")
+
         for episode in range(self.params["max_num_episodes"]):
             obs = self.env.reset()
             done = False
@@ -195,6 +235,20 @@ class DeepActorCriticAgent(mp.Process):
                 if step_num >= self.params["learning_step_thresh"] or done:
                     self.learn(next_obs, done)
                     step_num = 0
+                    # Monitor performance and save Agent's state when perf improves
+                    if done:
+                        cum_reward = np.sum(self.rewards)
+                        episode_rewards.append(cum_reward)
+                        if cum_reward > self.best_reward:
+                            self.best_reward = cum_reward
+                        if np.mean(episode_rewards) > prev_checkpoint_mean_ep_rew:
+                            num_improved_episodes_before_checkpoint += 1
+                        if num_improved_episodes_before_checkpoint >= self.params["save_freq_when_perf_improves"]:
+                            prev_checkpoint_mean_ep_rew = np.mean(episode_rewards)
+                            self.best_mean_reward = np.mean(episode_rewards)
+                            self.save()
+                            num_improved_episodes_before_checkpoint = 0
+
                 obs = next_obs
                 ep_reward += reward
                 self.global_step_num += 1
@@ -206,8 +260,9 @@ class DeepActorCriticAgent(mp.Process):
 
 if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
+    agent_params["model_dir"] = args.model_dir
     mp.set_start_method('spawn')
 
-    agent_procs =[DeepActorCriticAgent(id, args.env_name, agent_params) for id in range(agent_params["num_agents"])]
+    agent_procs =[DeepActorCriticAgent(id, args.env, agent_params) for id in range(agent_params["num_agents"])]
     [p.start() for p in agent_procs]
     [p.join() for p in agent_procs]
