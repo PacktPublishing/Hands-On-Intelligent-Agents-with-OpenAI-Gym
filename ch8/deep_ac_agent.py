@@ -11,10 +11,11 @@ except ImportError:
     pass
 from argparse import ArgumentParser
 from datetime import datetime
-import logging
 from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
+from function_approximator.shallow import Actor as ShallowActor
+from function_approximator.shallow import Critic as ShallowCritic
 
 parser = ArgumentParser("deep_ac_agent")
 parser.add_argument("--env-name",
@@ -29,7 +30,6 @@ args = parser.parse_args()
 global_step_num = 0
 
 params_manager= ParamsManager(args.params_file)
-seed = params_manager.get_agent_params()['seed']  # With the intent to make the results reproducible
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
 summary_file_path= summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_path)
@@ -39,63 +39,14 @@ params_manager.export_agent_params(summary_file_path + "/" + "agent_params.json"
 use_cuda = params_manager.get_agent_params()['use_cuda']
 # Introduced in PyTorch 0.4
 device = torch.device("cuda" if torch.cuda.is_available() and use_cuda else "cpu")
+
+seed = params_manager.get_agent_params()['seed']  # With the intent to make the results reproducible
 torch.manual_seed(seed)
 np.random.seed(seed)
 if torch.cuda.is_available() and use_cuda:
     torch.cuda.manual_seed_all(seed)
 
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
-
-
-class ShallowActor(torch.nn.Module):
-    def __init__(self, input_shape, output_shape):
-        super(ShallowActor, self).__init__()
-        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
-                                          torch.nn.ReLU())
-        self.actor_mu = torch.nn.Linear(32, output_shape)
-        self.actor_sigma = torch.nn.Linear(32, output_shape)
-
-    def forward(self, x):
-        x = x.to(device)
-        x = self.layer1(x)
-        mu = self.actor_mu(x)
-        sigma = self.actor_sigma(x)
-        return mu, sigma
-
-
-class ShallowCritic(torch.nn.Module):
-    def __init__(self, input_shape, output_shape=1):
-        super(ShallowCritic, self).__init__()
-        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
-                                          torch.nn.ReLU())
-        self.actor = torch.nn.Linear(32, output_shape)
-    def forward(self, x):
-        x = x.to(device)
-        x = self.layer1(x)
-        critic = self.actor(x)
-        return critic
-
-
-class ShallowActorCritic(torch.nn.Module):
-    def __init__(self, input_shape, actor_shape, critic_shape, params=None):
-        super(ShallowActorCritic, self).__init__()
-        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
-                                          torch.nn.ReLU())
-        self.layer2 = torch.nn.Sequential(torch.nn.Linear(32, 16),
-                                          torch.nn.ReLU())
-        self.actor_mu = torch.nn.Linear(16, actor_shape)
-        self.actor_sigma = torch.nn.Linear(16, actor_shape)
-        self.critic = torch.nn.Linear(16, critic_shape)
-
-    def forward(self, x):
-        x.requires_grad_()
-        x = x.to(device)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        actor_mu = self.actor_mu(x)
-        actor_sigma = self.actor_sigma(x)
-        critic = self.critic(x)
-        return actor_mu, actor_sigma, critic
 
 class DeepActorCritic(torch.nn.Module):
     def __init__(self, input_shape, actor_shape, critic_shape, params=None):
@@ -291,7 +242,6 @@ class DeepActorCriticAgent(mp.Process):
 if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
     mp.set_start_method('spawn')
-    mp.log_to_stderr(logging.DEBUG)
 
     agent_procs =[DeepActorCriticAgent(id, args.env_name, agent_params) for id in range(agent_params["num_agents"])]
     [p.start() for p in agent_procs]
