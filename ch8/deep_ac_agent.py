@@ -73,6 +73,7 @@ class DeepActorCriticAgent(mp.Process):
         self.global_step_num = 0
         self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
         self.best_reward = - float("inf")
+        self.saved_params = False  # Whether or not the params have been saved along with the model to model_dir
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -181,9 +182,14 @@ class DeepActorCriticAgent(mp.Process):
                        "best_reward": self.best_reward}
         torch.save(agent_state, model_file_name)
         print("Agent's state is saved to", model_file_name)
+        # Export the params used if not exported already
+        if not self.saved_params:
+            params_manager.export_agent_params(model_file_name + ".agent_params")
+            print("The parameters have been saved to", model_file_name + ".agent_params")
+            self.saved_params = True
 
     def load(self):
-        model_file_name = self.params["model_dir"] + "A3C_" + self.env_name + ".ptm"
+        model_file_name = self.params["model_dir"] + "A2C_" + self.env_name + ".ptm"
         agent_state = torch.load(model_file_name, map_location= lambda storage, loc: storage)
         self.actor.load_state_dict(agent_state["Actor"])
         self.critic.load_state_dict(agent_state["Critic"])
@@ -207,8 +213,8 @@ class DeepActorCriticAgent(mp.Process):
             #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
             self.actor = ShallowActor(self.state_shape, self.action_shape, device).to(device)
             self.critic = ShallowCritic(self.state_shape, self.critic_shape, device).to(device)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-4)
 
         # Handle loading and saving of trained Agent models
         episode_rewards = list()
@@ -231,13 +237,13 @@ class DeepActorCriticAgent(mp.Process):
                 action = self.get_action(obs)
                 next_obs, reward, done, _ = self.env.step(action)
                 self.rewards.append(reward)
+                cum_reward = np.sum(self.rewards)
                 step_num +=1
                 if step_num >= self.params["learning_step_thresh"] or done:
                     self.learn(next_obs, done)
                     step_num = 0
                     # Monitor performance and save Agent's state when perf improves
                     if done:
-                        cum_reward = np.sum(self.rewards)
                         episode_rewards.append(cum_reward)
                         if cum_reward > self.best_reward:
                             self.best_reward = cum_reward
@@ -254,7 +260,8 @@ class DeepActorCriticAgent(mp.Process):
                 self.global_step_num += 1
                 #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
                 writer.add_scalar(self.actor_name + "/reward", reward, self.global_step_num)
-            print(self.actor_name+ ":Episode#:", episode, "\t ep_reward=", ep_reward)
+            print("{}:Episode#:{} \t ep_reward:{} \t best_ep_reward:{}".format(
+                self.actor_name, episode, ep_reward, self.best_reward))
             writer.add_scalar(self.actor_name + "/ep_reward", ep_reward, self.global_step_num)
 
 
