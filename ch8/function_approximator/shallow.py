@@ -12,7 +12,9 @@ class Actor(torch.nn.Module):
         """
         super(Actor, self).__init__()
         self.device = device
-        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 64),
+                                          torch.nn.ReLU())
+        self.layer2 = torch.nn.Sequential(torch.nn.Linear(64, 32),
                                           torch.nn.ReLU())
         self.actor_mu = torch.nn.Linear(32, output_shape)
         self.actor_sigma = torch.nn.Linear(32, output_shape)
@@ -26,6 +28,7 @@ class Actor(torch.nn.Module):
         """
         x = x.to(self.device)
         x = self.layer1(x)
+        x = self.layer2(x)
         mu = self.actor_mu(x)
         sigma = self.actor_sigma(x)
         return mu, sigma
@@ -43,7 +46,9 @@ class Critic(torch.nn.Module):
         """
         super(Critic, self).__init__()
         self.device = device
-        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 32),
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 64),
+                                          torch.nn.ReLU())
+        self.layer2 = torch.nn.Sequential(torch.nn.Linear(64, 32),
                                           torch.nn.ReLU())
         self.critic= torch.nn.Linear(32, output_shape)
 
@@ -56,6 +61,7 @@ class Critic(torch.nn.Module):
         """
         x = x.to(self.device)
         x = self.layer1(x)
+        x = self.layer2(x)
         critic = self.critic(x)
         return critic
 
