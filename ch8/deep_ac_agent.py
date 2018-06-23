@@ -213,8 +213,8 @@ class DeepActorCriticAgent(mp.Process):
             #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
             self.actor = ShallowActor(self.state_shape, self.action_shape, device).to(device)
             self.critic = ShallowCritic(self.state_shape, self.critic_shape, device).to(device)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-4)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.params["learning_rate"])
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.params["learning_rate"])
 
         # Handle loading and saving of trained Agent models
         episode_rewards = list()

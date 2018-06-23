@@ -8,6 +8,7 @@
     "seed": 1,
     "summary_file_path_prefix": "./logs/",
     "use_cuda": true,
+    "learning_rate": 1e-4,
     "max_num_episodes": 50000,
     "gamma": 0.99,
     "learning_step_thresh": 10,
