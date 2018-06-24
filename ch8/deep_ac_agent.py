@@ -32,6 +32,12 @@ parser.add_argument("--model-dir", help="Directory to save/load trained model. D
                     type=str,
                     default="trained_models/",
                     metavar="MODEL_DIR")
+parser.add_argument("--render", help="Whether to render the environment to the display. Default=False",
+                    action='store_true',
+                    default=False)
+parser.add_argument("--test", help="Tests a saved Agent model to see the performance. Disables learning",
+                    action='store_true',
+                    default=False)
 args = parser.parse_args()
 global_step_num = 0
 
@@ -226,7 +232,11 @@ class DeepActorCriticAgent(mp.Process):
                 self.load()
                 prev_checkpoint_mean_ep_rew = self.best_mean_reward
             except FileNotFoundError:
-                print("WARNING: No trained model found for this environment. Training from scratch.")
+                if args.test:  # Test a saved model
+                    print("FATAL: No saved model found. Cannot test. Press any key to train from scratch")
+                    input()
+                else:
+                    print("WARNING: No trained model found for this environment. Training from scratch.")
 
         for episode in range(self.params["max_num_episodes"]):
             obs = self.env.reset()
@@ -239,7 +249,7 @@ class DeepActorCriticAgent(mp.Process):
                 self.rewards.append(reward)
                 cum_reward = np.sum(self.rewards)
                 step_num +=1
-                if step_num >= self.params["learning_step_thresh"] or done:
+                if not args.test and(step_num >= self.params["learning_step_thresh"] or done):
                     self.learn(next_obs, done)
                     step_num = 0
                     # Monitor performance and save Agent's state when perf improves
@@ -258,6 +268,8 @@ class DeepActorCriticAgent(mp.Process):
                 obs = next_obs
                 ep_reward += reward
                 self.global_step_num += 1
+                if args.render:
+                    self.env.render()
                 #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
                 writer.add_scalar(self.actor_name + "/reward", reward, self.global_step_num)
             print("{}:Episode#:{} \t ep_reward:{} \t best_ep_reward:{}".format(
