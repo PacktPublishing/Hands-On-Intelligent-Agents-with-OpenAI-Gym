@@ -42,7 +42,10 @@ class ParamsManager(object):
         :return:
         """
         with open(file_name, 'w') as f:
-            json.dump(self.params['env'], f)
+            json.dump(self.params['env'], f, indent=4, separators=(',',': '), sort_keys=True)
+            # Adding a trailing newline for POSIX compatibility
+            f.write("\n")
+
     def export_agent_params(self, file_name):
         """
         Export the agent parameters to the specified file. Useful for logging experiment specific parameters.
@@ -50,7 +53,9 @@ class ParamsManager(object):
         :return:
         """
         with open(file_name, 'w') as f:
-            json.dump(self.params['agent'], f)
+            json.dump(self.params['agent'], f, indent=4, separators=(',', ': '), sort_keys=True)
+            # Adding a trailing newline for POSIX compatibility
+            f.write("\n")
 
 
 if __name__ == "__main__":
