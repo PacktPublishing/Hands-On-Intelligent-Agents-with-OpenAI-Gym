@@ -34,6 +34,37 @@ class Actor(torch.nn.Module):
         return mu, sigma
 
 
+class DiscreteActor(torch.nn.Module):
+    def __init__(self, input_shape, output_shape, device=torch.device("cpu")):
+        """
+        A feed forward neural network that produces a logit for each action in the action space.
+        Used to represent the Actor in an Actor-Critic algorithm
+        :param input_shape: Shape of the inputs. This is typically the shape of each of the observations for the Actor
+        :param output_shape: Shape of the outputs. This is the shape of the actions that the Actor should produce
+        :param device: The torch.device (cpu or cuda) where the inputs and the parameters are to be stored and operated
+        """
+        super(DiscreteActor, self).__init__()
+        self.device = device
+        self.layer1 = torch.nn.Sequential(torch.nn.Linear(input_shape[0], 64),
+                                          torch.nn.ReLU())
+        self.layer2 = torch.nn.Sequential(torch.nn.Linear(64, 32),
+                                          torch.nn.ReLU())
+        self.logits = torch.nn.Linear(32, output_shape)
+
+    def forward(self, x):
+        """
+        Forward pass through the Actor network. Takes batch_size x observations as input and produces mu and sigma
+        as the outputs
+        :param x: The observations
+        :return: Mean (mu) and Sigma (sigma) for a Gaussian policy
+        """
+        x = x.to(self.device)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        logits = self.logits(x)
+        return logits
+
+
 class Critic(torch.nn.Module):
     def __init__(self, input_shape, output_shape=1, device=torch.device("cpu")):
         """
