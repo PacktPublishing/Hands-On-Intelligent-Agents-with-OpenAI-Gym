@@ -278,16 +278,16 @@ class DeepActorCriticAgent(mp.Process):
                 action = self.get_action(obs)
                 next_obs, reward, done, _ = self.env.step(action)
                 self.rewards.append(reward)
-                cum_reward = np.sum(self.rewards)
+                ep_reward += reward
                 step_num +=1
                 if not args.test and(step_num >= self.params["learning_step_thresh"] or done):
                     self.learn(next_obs, done)
                     step_num = 0
                     # Monitor performance and save Agent's state when perf improves
                     if done:
-                        episode_rewards.append(cum_reward)
-                        if cum_reward > self.best_reward:
-                            self.best_reward = cum_reward
+                        episode_rewards.append(ep_reward)
+                        if ep_reward > self.best_reward:
+                            self.best_reward = ep_reward
                         if np.mean(episode_rewards) > prev_checkpoint_mean_ep_rew:
                             num_improved_episodes_before_checkpoint += 1
                         if num_improved_episodes_before_checkpoint >= self.params["save_freq_when_perf_improves"]:
@@ -297,14 +297,13 @@ class DeepActorCriticAgent(mp.Process):
                             num_improved_episodes_before_checkpoint = 0
 
                 obs = next_obs
-                ep_reward += reward
                 self.global_step_num += 1
                 if args.render:
                     self.env.render()
                 #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
                 writer.add_scalar(self.actor_name + "/reward", reward, self.global_step_num)
-            print("{}:Episode#:{} \t ep_reward:{} \t best_ep_reward:{}".format(
-                self.actor_name, episode, ep_reward, self.best_reward))
+            print("{}:Episode#:{} \t ep_reward:{} \t mean_ep_rew:{}\t best_ep_reward:{}".format(
+                self.actor_name, episode, ep_reward, np.mean(episode_rewards), self.best_reward))
             writer.add_scalar(self.actor_name + "/ep_reward", ep_reward, self.global_step_num)
 
 
