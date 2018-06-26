@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
+from torch.distributions.categorical import Categorical
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 import gym
@@ -15,8 +16,10 @@ from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 from function_approximator.shallow import Actor as ShallowActor
+from function_approximator.shallow import DiscreteActor as ShallowDiscreteActor
 from function_approximator.shallow import Critic as ShallowCritic
 from function_approximator.deep import Actor as DeepActor
+from function_approximator.deep import DiscreteActor as DeepDiscreteActor
 from function_approximator.deep import Critic as DeepCritic
 
 parser = ArgumentParser("deep_ac_agent")
@@ -80,6 +83,7 @@ class DeepActorCriticAgent(mp.Process):
         self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
         self.best_reward = - float("inf")
         self.saved_params = False  # Whether or not the params have been saved along with the model to model_dir
+        self.continuous_action_space = True  #Assumption by default unless env.action_space is Discrete
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -90,7 +94,7 @@ class DeepActorCriticAgent(mp.Process):
         mu, sigma = self.actor(obs)
         value = self.critic(obs)
         [ mu[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
-        for i in range(self.action_shape)]  # Clamp each dim of mu based on the (low,high) limits of that action dim
+         for i in range(self.action_shape)]  # Clamp each dim of mu based on the (low,high) limits of that action dim
         sigma = torch.nn.Softplus()(sigma).squeeze() + 1e-7  # Let sigma be (smoothly) +ve
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
@@ -99,7 +103,20 @@ class DeepActorCriticAgent(mp.Process):
             #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
             self.mu.unsqueeze_(0)
         self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma, validate_args=True)
-        return(self.action_distribution)
+        return self.action_distribution
+
+    def discrete_policy(self, obs):
+        """
+        Calculates a discrete/categorical distribution over actions given observations
+        :param obs: Agent's observation
+        :return: policy, a distribution over actions for the given observation
+        """
+        logits = self.actor(obs)
+        value = self.critic(obs)
+        self.logits = logits.to(torch.device("cpu"))
+        self.value = value.to(torch.device("cpu"))
+        self.action_distribution = Categorical(logits=self.logits)
+        return self.action_distribution
 
     def preproc_obs(self, obs):
         if len(obs.shape) == 3:
@@ -111,8 +128,9 @@ class DeepActorCriticAgent(mp.Process):
         return obs
 
     def process_action(self, action):
-        [action[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
-         for i in range(self.action_shape)]  # Limit the action to lie between the (low, high) limits of the env
+        if self.continuous_action_space:
+            [action[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
+             for i in range(self.action_shape)]  # Limit the action to lie between the (low, high) limits of the env
         action = action.to(torch.device("cpu"))
         return action.numpy().squeeze(0)  # Convert to numpy ndarray, squeeze and remove the batch dimension
 
@@ -210,14 +228,27 @@ class DeepActorCriticAgent(mp.Process):
     def run(self):
         self.env = gym.make(self.env_name)
         self.state_shape = self.env.observation_space.shape
-        self.action_shape = self.env.action_space.shape[0]
+        if isinstance(self.env.action_space.sample(), int):  # Discrete action space
+            self.action_shape = self.env.action_space.n
+            self.policy = self.discrete_policy
+            self.continuous_action_space = False
+
+        else:  # Continuous action space
+            self.action_shape = self.env.action_space.shape[0]
+            self.policy = self.multi_variate_gaussian_policy
         self.critic_shape = 1
         if len(self.state_shape) == 3:  # Screen image is the input to the agent
-            self.actor= DeepActor(self.state_shape, self.action_shape, device).to(device)
+            if self.continuous_action_space:
+                self.actor= DeepActor(self.state_shape, self.action_shape, device).to(device)
+            else:  # Discrete action space
+                self.actor = DeepDiscreteActor(self.state_shape, self.action_shape, device).to(device)
             self.critic = DeepCritic(self.state_shape, self.critic_shape, device).to(device)
         else:  # Input is a (single dimensional) vector
-            #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
-            self.actor = ShallowActor(self.state_shape, self.action_shape, device).to(device)
+            if self.continuous_action_space:
+                #self.actor_critic = ShallowActorCritic(self.state_shape, self.action_shape, 1, self.params).to(device)
+                self.actor = ShallowActor(self.state_shape, self.action_shape, device).to(device)
+            else:  # Discrete action space
+                self.actor = ShallowDiscreteActor(self.state_shape, self.action_shape, device).to(device)
             self.critic = ShallowCritic(self.state_shape, self.critic_shape, device).to(device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.params["learning_rate"])
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.params["learning_rate"])
