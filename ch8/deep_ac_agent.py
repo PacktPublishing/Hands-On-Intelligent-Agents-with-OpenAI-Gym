@@ -23,27 +23,19 @@ from function_approximator.deep import DiscreteActor as DeepDiscreteActor
 from function_approximator.deep import Critic as DeepCritic
 
 parser = ArgumentParser("deep_ac_agent")
-parser.add_argument("--env", help="Name of the Gym environment",
-                    type= str,
-                    default="CarRacing-v0",
-                    metavar="ENV_ID")
+parser.add_argument("--env", help="Name of the Gym environment", default="CarRacing-v0", metavar="ENV_ID")
 parser.add_argument("--params-file", help="Path to the parameters file. Default= ./parameters.json",
-                    type= str,
-                    default="parameters.json",
-                    metavar="PFILE.json")
+                    default="parameters.json", metavar="PFILE.json")
 parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
-                    type=str,
-                    default="trained_models/",
-                    metavar="MODEL_DIR")
+                    default="trained_models/", metavar="MODEL_DIR")
 parser.add_argument("--render", help="Whether to render the environment to the display. Default=False",
-                    action='store_true',
-                    default=False)
+                    action='store_true', default=False)
 parser.add_argument("--test", help="Tests a saved Agent model to see the performance. Disables learning",
-                    action='store_true',
-                    default=False)
+                    action='store_true', default=False)
+parser.add_argument("--gpu-id", help="GPU device ID to use. Default:0", type=int, default=0, metavar="GPU_ID")
 args = parser.parse_args()
-global_step_num = 0
 
+global_step_num = 0
 params_manager= ParamsManager(args.params_file)
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
 summary_file_path= summary_file_path_prefix + args.env + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
@@ -53,7 +45,7 @@ params_manager.export_env_params(summary_file_path + "/" + "env_params.json")
 params_manager.export_agent_params(summary_file_path + "/" + "agent_params.json")
 use_cuda = params_manager.get_agent_params()['use_cuda']
 # Introduced in PyTorch 0.4
-device = torch.device("cuda" if torch.cuda.is_available() and use_cuda else "cpu")
+device = torch.device("cuda:" + str(args.gpu_id) if torch.cuda.is_available() and use_cuda else "cpu")
 
 seed = params_manager.get_agent_params()['seed']  # With the intent to make the results reproducible
 torch.manual_seed(seed)
