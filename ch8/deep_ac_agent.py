@@ -5,7 +5,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.categorical import Categorical
 import torch.multiprocessing as mp
 import torch.nn.functional as F
-import gym
+from environment.utils import make_env
 try:
     import roboschool
 except ImportError:
@@ -218,7 +218,7 @@ class DeepActorCriticAgent(mp.Process):
               " and an all time best reward of:", self.best_reward)
 
     def run(self):
-        self.env = gym.make(self.env_name)
+        self.env = make_env(self.env_name)
         self.state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space.sample(), int):  # Discrete action space
             self.action_shape = self.env.action_space.n
