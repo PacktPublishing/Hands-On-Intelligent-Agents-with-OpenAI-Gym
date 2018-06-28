@@ -99,6 +99,56 @@ def make_env_in_sep_proc(env_name, shared_pipe, parent_pipe, stack=False, scale_
         if method == 'get_spaces':
             shared_pipe.send((env.observation_space, env.action_space))
 
+class SubprocVecEnv(VecEnv):
+    def __init__(self, env_names, spaces=None):
+        """
+        env_names: list of (gym) environments to run in sub/separate processes
+        """
+        self.waiting = False
+        self.closed = False
+        num_envs = len(env_names)
+        self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_envs)])
+        self.ps = []
+        for (env_name, worker_conn, parent_conn) in zip(env_names, self.work_remotes, self.remotes):
+            self.ps.append(mp.Process(target=make_env_in_sep_proc, args=(env_name, worker_conn, parent_conn)))
+        for p in self.ps:
+            p.daemon = True # if the main process crashes, we should not cause things to hang
+            p.start()
+
+        for remote in self.work_remotes:
+            remote.close()
+
+        self.remotes[0].send(('get_spaces', None))
+        observation_space, action_space = self.remotes[0].recv()
+        VecEnv.__init__(self, num_envs, observation_space, action_space)
+
+    def step_async(self, actions):
+        for remote, action in zip(self.remotes, actions):
+            remote.send(('step', action))
+        self.waiting = True
+
+    def step_wait(self):
+        results = [remote.recv() for remote in self.remotes]
+        self.waiting = False
+        obs, rews, dones, infos = zip(*results)
+        return np.stack(obs), np.stack(rews), np.stack(dones), infos
+
+    def reset(self):
+        for remote in self.remotes:
+            remote.send(('reset', None))
+        return np.stack([remote.recv() for remote in self.remotes])
+
+    def close(self):
+        if self.closed:
+            return
+        if self.waiting:
+            for remote in self.remotes:
+                remote.recv()
+        for remote in self.remotes:
+            remote.send(('close', None))
+        for p in self.ps:
+            p.join()
+        self.closed = True
 
 
 class EnvProc(mp.Process):
