@@ -330,6 +330,9 @@ class DeepActorCriticAgent():
                         self.best_mean_reward = np.mean(episode_rewards)
                         self.save()
                         num_improved_episodes_before_checkpoint = 0
+
+                    writer.add_scalar(self.actor_name + "/mean_ep_rew", np.mean(cum_step_rewards[done_env_idxs]),
+                                      self.global_step_num)
                     # Reset the cum_step_rew for the done envs
                     cum_step_rewards[done_env_idxs] = 0.0
 
@@ -341,7 +344,6 @@ class DeepActorCriticAgent():
             writer.add_scalar(self.actor_name + "/reward", np.mean(cum_step_rewards), self.global_step_num)
             print("{}:Episode#:{} \t avg_step_reward:{:.4} \t mean_ep_rew:{:.4}\t best_ep_reward:{:.4}".format(
                 self.actor_name, episode, np.mean(cum_step_rewards), np.mean(episode_rewards), self.best_reward))
-            writer.add_scalar(self.actor_name + "/mean_ep_rew", np.mean(episode_rewards), self.global_step_num)
 
 
 if __name__ == "__main__":

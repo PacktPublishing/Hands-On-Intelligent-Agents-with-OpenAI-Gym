@@ -109,7 +109,7 @@ class SubprocVecEnv(VecEnv):
         self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_envs)])
         self.ps = []
         for (env_name, worker_conn, parent_conn) in zip(env_names, self.work_remotes, self.remotes):
-            self.ps.append(mp.Process(target=runt stat_env_in_sep_proc, args=(env_name, worker_conn, parent_conn)))
+            self.ps.append(mp.Process(target=run_env_in_sep_proc, args=(env_name, worker_conn, parent_conn)))
         for p in self.ps:
             p.daemon = True # if the main process crashes, we should not cause things to hang
             p.start()

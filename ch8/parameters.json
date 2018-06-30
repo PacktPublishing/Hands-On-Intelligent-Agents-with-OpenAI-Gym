@@ -4,7 +4,7 @@
   },
 
   "agent":{
-    "num_agents": 2,
+    "num_agents": 4,
     "seed": 1,
     "summary_file_path_prefix": "./logs/",
     "use_cuda": true,
