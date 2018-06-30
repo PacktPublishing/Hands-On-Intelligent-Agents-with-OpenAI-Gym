@@ -55,17 +55,6 @@ if torch.cuda.is_available() and use_cuda:
 
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
-class BatchDistributions(object):
-    def __init__(self, distributions):
-        """
-        Container to hold and sample from a batch of distributions. Eg.: Several MultivariateNormal distributions
-        :param distributions: List of distribution objects that have sample() method
-        """
-        self.distributions = distributions
-    def sample(self):
-        return torch.tensor([[d.sample()] for d in self.distributions])
-    def log_prob(self, actions):
-        return torch.tensor([[d.log_prob(a)] for d,a in zip(self.distributions, actions)])
 
 class DeepActorCriticAgent():
     def __init__(self, id, env_names, agent_params):
@@ -103,18 +92,13 @@ class DeepActorCriticAgent():
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
-        self.action_distributions = []
-        for loc, sig in zip(self.mu, self.sigma):
-            if len(loc) == 0: # See if mu is a scalar
-                #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
-                loc.unsqueeze_(0)
-            self.covariance = torch.eye(self.action_shape) * sig
-            if self.action_shape == 1:
-                self.covariance = sig.unsqueeze(-1)  # Make the covariance a square mat to avoid RuntimeError with MultivariateNormal
-            action_distribution = MultivariateNormal(loc, self.covariance)
-            self.action_distributions.append(action_distribution)
-        self.action_distributions = BatchDistributions(self.action_distributions)
-        return self.action_distributions
+        if len(self.mu[0].shape) == 0: # See if mu is a scalar
+            self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
+        self.covariance = torch.eye(self.action_shape) * self.sigma
+        if self.action_shape == 1:
+            self.covariance = self.sigma.unsqueeze(-1)  # Make the covariance a square mat to avoid RuntimeError with MultivariateNormal
+        self.action_distribution = MultivariateNormal(self.mu, self.covariance)
+        return self.action_distribution
 
     def discrete_policy(self, obs):
         """
@@ -123,7 +107,7 @@ class DeepActorCriticAgent():
         :return: policy, a distribution over actions for the given observation
         """
         logits = self.actor(obs)
-        value = self.critic(obs)
+        value = self.critic(obs).squeeze()
         self.logits = logits.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
         self.action_distribution = Categorical(logits=self.logits)
@@ -199,16 +183,14 @@ class DeepActorCriticAgent():
         # 2. Reshape the tensor to be of shape:(num_actors x num_steps x shape_of_x) (using torch.transpose(1,0)
         v_s_batch = torch.stack(n_step_trajectory.value_s).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
         log_prob_a_batch = torch.stack(n_step_trajectory.log_prob_a).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
-        actor_losses, critic_losses, entropy = [], [], []
-        for td_targets, critic_predictions, log_p_a, pi_s_a_w in zip(
-                td_targets, v_s_batch, log_prob_a_batch, self.action_distributions.distributions):
+        actor_losses, critic_losses = [], []
+        for td_targets, critic_predictions, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
             td_err = td_targets - critic_predictions
             actor_losses.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
             critic_losses.append(F.smooth_l1_loss(critic_predictions, td_targets))
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
-            entropy.append(pi_s_a_w.entropy())
 
-        actor_loss = torch.stack(actor_losses).mean() - torch.stack(entropy).mean()
+        actor_loss = torch.stack(actor_losses).mean() - self.action_distribution.entropy().mean()
         critic_loss = torch.stack(critic_losses).mean()
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
