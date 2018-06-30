@@ -55,6 +55,18 @@ if torch.cuda.is_available() and use_cuda:
 
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
+class BatchDistributions(object):
+    def __init__(self, distributions):
+        """
+        Container to hold and sample from a batch of distributions. Eg.: Several MultivariateNormal distributions
+        :param distributions: List of distribution objects that have sample() method
+        """
+        self.distributions = distributions
+    def sample(self):
+        return torch.tensor([[d.sample()] for d in self.distributions])
+    def log_prob(self, actions):
+        return torch.tensor([[d.log_prob(a)] for d,a in zip(self.distributions, actions)])
+
 class DeepActorCriticAgent():
     def __init__(self, id, env_names, agent_params):
         """
@@ -84,21 +96,25 @@ class DeepActorCriticAgent():
         :return: policy, a distribution over actions for the given observation
         """
         mu, sigma = self.actor(obs)
-        value = self.critic(obs)
+        value = self.critic(obs).squeeze()
         [ mu[:, i].clamp_(float(self.envs.action_space.low[i]), float(self.envs.action_space.high[i]))
          for i in range(self.action_shape)]  # Clamp each dim of mu based on the (low,high) limits of that action dim
         sigma = torch.nn.Softplus()(sigma) + 1e-7  # Let sigma be (smoothly) +ve
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
-        if len(self.mu.shape) == 0: # See if mu is a scalar
-            #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
-            self.mu.unsqueeze_(0)
-        self.covariance = torch.eye(self.action_shape) * self.sigma
-        if self.action_shape == 1:
-            self.covariance = self.sigma.unsqueeze(-1)  # Make the covariance a square mat to avoid RuntimeError with MultivariateNormal
-        self.action_distribution = MultivariateNormal(self.mu, self.covariance)
-        return self.action_distribution
+        self.action_distributions = []
+        for loc, sig in zip(self.mu, self.sigma):
+            if len(loc) == 0: # See if mu is a scalar
+                #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
+                loc.unsqueeze_(0)
+            self.covariance = torch.eye(self.action_shape) * sig
+            if self.action_shape == 1:
+                self.covariance = sig.unsqueeze(-1)  # Make the covariance a square mat to avoid RuntimeError with MultivariateNormal
+            action_distribution = MultivariateNormal(loc, self.covariance)
+            self.action_distributions.append(action_distribution)
+        self.action_distributions = BatchDistributions(self.action_distributions)
+        return self.action_distributions
 
     def discrete_policy(self, obs):
         """
@@ -131,7 +147,7 @@ class DeepActorCriticAgent():
 
     def get_action(self, obs):
         obs = self.preproc_obs(obs)
-        action_distribution = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
+        action_distributions = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
         value = self.value
         actions = action_distributions.sample()
         log_prob_a = action_distributions.log_prob(actions)

@@ -70,10 +70,9 @@ class VecEnv(ABC):
         return self
 
 
-def make_env_in_sep_proc(env_name, shared_pipe, parent_pipe, stack=False, scale_rew=False):
+def run_env_in_sep_proc(env_name, shared_pipe, parent_pipe, stack=False, scale_rew=False):
     """
-    Create an environment instance (remote or local) in a separate proc and return the env object
-    :return: The env running in a different proc
+    Create and run an environment instance (remote or local) in a separate proc
     """
     parent_pipe.close()
 
@@ -110,7 +109,7 @@ class SubprocVecEnv(VecEnv):
         self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_envs)])
         self.ps = []
         for (env_name, worker_conn, parent_conn) in zip(env_names, self.work_remotes, self.remotes):
-            self.ps.append(mp.Process(target=make_env_in_sep_proc, args=(env_name, worker_conn, parent_conn)))
+            self.ps.append(mp.Process(target=runt stat_env_in_sep_proc, args=(env_name, worker_conn, parent_conn)))
         for p in self.ps:
             p.daemon = True # if the main process crashes, we should not cause things to hang
             p.start()
