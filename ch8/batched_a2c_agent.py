@@ -199,13 +199,16 @@ class DeepActorCriticAgent():
         # 2. Reshape the tensor to be of shape:(num_actors x num_steps x shape_of_x) (using torch.transpose(1,0)
         v_s_batch = torch.stack(n_step_trajectory.value_s).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
         log_prob_a_batch = torch.stack(n_step_trajectory.log_prob_a).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
-        actor_losses, critic_losses = [], []
-        for td_targets, critic_predictions, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
+        actor_losses, critic_losses, entropy = [], [], []
+        for td_targets, critic_predictions, log_p_a, pi_s_a_w in zip(
+                td_targets, v_s_batch, log_prob_a_batch, self.action_distributions.distributions):
             td_err = td_targets - critic_predictions
             actor_losses.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
             critic_losses.append(F.smooth_l1_loss(critic_predictions, td_targets))
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
-        actor_loss = torch.stack(actor_losses).mean()
+            entropy.append(pi_s_a_w.entropy())
+
+        actor_loss = torch.stack(actor_losses).mean() - torch.stack(entropy).mean()
         critic_loss = torch.stack(critic_losses).mean()
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
@@ -341,7 +344,9 @@ class DeepActorCriticAgent():
             if args.render:
                 self.envs.render()
             #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
-            writer.add_scalar(self.actor_name + "/reward", np.mean(cum_step_rewards), self.global_step_num) print("{}:Episode#:{} \t avg_step_reward:{:.4} \t mean_ep_rew:{:.4}\t best_ep_reward:{:.4}".format( self.actor_name, episode, np.mean(cum_step_rewards), np.mean(episode_rewards), self.best_reward))
+            writer.add_scalar(self.actor_name + "/reward", np.mean(cum_step_rewards), self.global_step_num)
+            print("{}:Episode#:{} \t avg_step_reward:{:.4} \t mean_ep_rew:{:.4}\t best_ep_reward:{:.4}".format(
+                self.actor_name, episode, np.mean(cum_step_rewards), np.mean(episode_rewards), self.best_reward))
 
 
 if __name__ == "__main__":
