@@ -5,7 +5,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.categorical import Categorical
 import torch.multiprocessing as mp
 import torch.nn.functional as F
-import gym
+from environment.utils import SubprocVecEnv
 try:
     import roboschool
 except ImportError:
@@ -55,8 +55,20 @@ if torch.cuda.is_available() and use_cuda:
 
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
-class DeepActorCriticAgent(mp.Process):
-    def __init__(self, id, env_name, agent_params):
+class BatchDistributions(object):
+    def __init__(self, distributions):
+        """
+        Container to hold and sample from a batch of distributions. Eg.: Several MultivariateNormal distributions
+        :param distributions: List of distribution objects that have sample() method
+        """
+        self.distributions = distributions
+    def sample(self):
+        return torch.tensor([[d.sample()] for d in self.distributions])
+    def log_prob(self, actions):
+        return torch.tensor([[d.log_prob(a)] for d,a in zip(self.distributions, actions)])
+
+class DeepActorCriticAgent():
+    def __init__(self, id, env_names, agent_params):
         """
         An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
         :param state_shape:
@@ -65,7 +77,7 @@ class DeepActorCriticAgent(mp.Process):
         super(DeepActorCriticAgent, self).__init__()
         self.id = id
         self.actor_name = "actor" + str(self.id)
-        self.env_name = env_name
+        self.env_names = env_names
         self.params = agent_params
         self.policy = self.multi_variate_gaussian_policy
         self.gamma = self.params['gamma']
@@ -75,7 +87,7 @@ class DeepActorCriticAgent(mp.Process):
         self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
         self.best_reward = - float("inf")
         self.saved_params = False  # Whether or not the params have been saved along with the model to model_dir
-        self.continuous_action_space = True  #Assumption by default unless env.action_space is Discrete
+        self.continuous_action_space = True  # Assumption by default unless env.action_space is Discrete
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -84,18 +96,25 @@ class DeepActorCriticAgent(mp.Process):
         :return: policy, a distribution over actions for the given observation
         """
         mu, sigma = self.actor(obs)
-        value = self.critic(obs)
-        [ mu[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
+        value = self.critic(obs).squeeze()
+        [ mu[:, i].clamp_(float(self.envs.action_space.low[i]), float(self.envs.action_space.high[i]))
          for i in range(self.action_shape)]  # Clamp each dim of mu based on the (low,high) limits of that action dim
-        sigma = torch.nn.Softplus()(sigma).squeeze() + 1e-7  # Let sigma be (smoothly) +ve
+        sigma = torch.nn.Softplus()(sigma) + 1e-7  # Let sigma be (smoothly) +ve
         self.mu = mu.to(torch.device("cpu"))
         self.sigma = sigma.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
-        if len(self.mu.shape) == 0: # See if mu is a scalar
-            #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
-            self.mu.unsqueeze_(0)
-        self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma, validate_args=True)
-        return self.action_distribution
+        self.action_distributions = []
+        for loc, sig in zip(self.mu, self.sigma):
+            if len(loc) == 0: # See if mu is a scalar
+                #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
+                loc.unsqueeze_(0)
+            self.covariance = torch.eye(self.action_shape) * sig
+            if self.action_shape == 1:
+                self.covariance = sig.unsqueeze(-1)  # Make the covariance a square mat to avoid RuntimeError with MultivariateNormal
+            action_distribution = MultivariateNormal(loc, self.covariance)
+            self.action_distributions.append(action_distribution)
+        self.action_distributions = BatchDistributions(self.action_distributions)
+        return self.action_distributions
 
     def discrete_policy(self, obs):
         """
@@ -111,72 +130,91 @@ class DeepActorCriticAgent(mp.Process):
         return self.action_distribution
 
     def preproc_obs(self, obs):
-        if len(obs.shape) == 3:
+        if len(obs[0].shape) == 3:
             #  Make sure the obs are in this order: C x W x H and add a batch dimension
-            obs = np.reshape(obs, (obs.shape[2], obs.shape[1], obs.shape[0]))
-            obs = np.resize(obs, (3, 84, 84))
-        #  Convert to torch Tensor, add a batch dimension, convert to float repr
-        obs = torch.from_numpy(obs).unsqueeze(0).float()
+            obs = np.reshape(obs, (-1, obs.shape[3], obs.shape[2], obs.shape[1]))
+            obs = np.resize(obs, (-1, 3, 84, 84))
+        #  Convert to torch Tensor, convert to float repr
+        obs = torch.from_numpy(obs).float()
         return obs
 
     def process_action(self, action):
         if self.continuous_action_space:
-            [action[:, i].clamp_(float(self.env.action_space.low[i]), float(self.env.action_space.high[i]))
+            [action[:, i].clamp_(float(self.envs.action_space.low[i]), float(self.envs.action_space.high[i]))
              for i in range(self.action_shape)]  # Limit the action to lie between the (low, high) limits of the env
         action = action.to(torch.device("cpu"))
-        return action.numpy().squeeze(0)  # Convert to numpy ndarray, squeeze and remove the batch dimension
+        return action.numpy()
 
     def get_action(self, obs):
         obs = self.preproc_obs(obs)
-        action_distribution = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
+        action_distributions = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
         value = self.value
-        action = action_distribution.sample()
-        log_prob_a = action_distribution.log_prob(action)
-        action = self.process_action(action)
-        self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
-        return action
-
-    def calculate_n_step_return(self, n_step_rewards, final_state, done, gamma):
+        actions = action_distributions.sample()
+        log_prob_a = action_distributions.log_prob(actions)
+        actions = self.process_action(actions)
+        self.trajectory.append(Transition(obs, value, actions, log_prob_a))  # Construct the trajectory
+        return actions
+    # TODO: rename num_agents to num_actors in parameters.json file to be consistent with comments
+    def calculate_n_step_return(self, n_step_rewards, next_states, dones, gamma):
         """
-        Calculates the n-step return for each state in the input-trajectory/n_step_transitions
-        :param n_step_rewards: List of rewards for each step
-        :param final_state: Final state in this n_step_transition/trajectory
-        :param done: True rf the final state is a terminal state if not, False
+        Calculates the n-step return for each state in the input-trajectory/n_step_transitions for the "done" actors
+        :param n_step_rewards: List of length=num_steps containing rewards of shape=(num_actors x 1)
+        :param next_states: list of length=num_actors containing next observations of shape=(obs_shape)
+        :param dones: list of length=num_actors containing True if the next_state is a terminal state if not, False
         :return: The n-step return for each state in the n_step_transitions
         """
         g_t_n_s = list()
         with torch.no_grad():
-            g_t_n = torch.tensor([[0]]).float() if done else self.critic(self.preproc_obs(final_state)).cpu()
-            for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
-                g_t_n = torch.tensor(r_t).float() + self.gamma * g_t_n
-                g_t_n_s.insert(0, g_t_n)  # n-step returns inserted to the left to maintain correct index order
-            return g_t_n_s
+            # 1. Calculate next-state values for each actor:
+            #    a. If next_state is terminal (done[actor_idx]=True), set g_t_n[actor_idx]=0
+            #    b. If next_state is non-terminal (done[actor_idx]=False), set g_t_n[actor_idx] to Critic's prediction
+            g_t_n = torch.tensor([[not d] for d  in dones]).float()  # 1. a.
+            # See if there is at least one non-terminal next-state
+            if np.where([not d for d in dones])[0].size > 0:
+                non_terminal_idxs = torch.tensor(np.where([not d for d in dones])).squeeze(0)
+                g_t_n[non_terminal_idxs] = self.critic(self.preproc_obs(next_states[non_terminal_idxs])).cpu()  # 1. b.
+            g_t_n_s_batch = []
+            n_step_rewards = torch.stack(n_step_rewards)  # tensor of shape (num_steps x num_actors x 1)
+            # For each actor
+            for actor_idx in range(n_step_rewards.shape[1]):
+                actor_n_step_rewards = n_step_rewards.index_select(1, torch.tensor([actor_idx]))  # shape:(num_steps,1)
+                g_t_n_s = []
+                # Calculate n number of n-step returns
+                for r_t in actor_n_step_rewards.numpy()[::-1]:  # Reverse order; From r_tpn to r_t; PyTorch can't slice in reverse #229
+                    g_t_n[actor_idx] = torch.tensor(r_t).float() + self.gamma * g_t_n[actor_idx]
+                    g_t_n_s.insert(0, g_t_n[actor_idx].clone())  # n-step returns inserted to the left to maintain correct index order
+                g_t_n_s_batch.append(g_t_n_s)
+            return torch.tensor(g_t_n_s_batch)  # tensor of shape:(num_actors, num_steps, 1)
 
     def calculate_loss(self, trajectory, td_targets):
         """
         Calculates the critic and actor losses using the td_targets and self.trajectory
-        :param td_targets:
+        :param trajectory: List of trajectories from all the actors
+        :param td_targets: Tensor of shape:(num_actors, num_steps, 1)
         :return:
         """
         n_step_trajectory = Transition(*zip(*trajectory))
-        v_s_batch = n_step_trajectory.value_s
-        log_prob_a_batch = n_step_trajectory.log_prob_a
-        actor_loss, critic_loss = [], []
-        for td_target, critic_prediction, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
-            td_err = td_target - critic_prediction
-            actor_loss.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
-            critic_loss.append(F.smooth_l1_loss(critic_prediction, td_target))
+        # n_step_trajectory.x returns a list of length= num_steps containing num_actors x shape_of_x items
+        # 1. Create tensor of shape:(num_steps x num_actors x shape_of_x) (using torch.stack())
+        # 2. Reshape the tensor to be of shape:(num_actors x num_steps x shape_of_x) (using torch.transpose(1,0)
+        v_s_batch = torch.stack(n_step_trajectory.value_s).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
+        log_prob_a_batch = torch.stack(n_step_trajectory.log_prob_a).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
+        actor_losses, critic_losses = [], []
+        for td_targets, critic_predictions, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
+            td_err = td_targets - critic_predictions
+            actor_losses.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
+            critic_losses.append(F.smooth_l1_loss(critic_predictions, td_targets))
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
-        actor_loss = torch.stack(actor_loss).mean()
-        critic_loss = torch.stack(critic_loss).mean()
+        actor_loss = torch.stack(actor_losses).mean()
+        critic_loss = torch.stack(critic_losses).mean()
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
         writer.add_scalar(self.actor_name + "/actor_loss", actor_loss, self.global_step_num)
 
         return actor_loss, critic_loss
 
-    def learn(self, n_th_observation, done):
-        td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
+    def learn(self, n_th_observations, dones):
+        td_targets = self.calculate_n_step_return(self.rewards, n_th_observations, dones, self.gamma)
         actor_loss, critic_loss = self.calculate_loss(self.trajectory, td_targets)
 
         self.actor_optimizer.zero_grad()
@@ -191,7 +229,7 @@ class DeepActorCriticAgent(mp.Process):
         self.rewards.clear()
 
     def save(self):
-        model_file_name = self.params["model_dir"] + "A2C_" + self.env_name + ".ptm"
+        model_file_name = self.params["model_dir"] + "A2C_" + self.env_names[0] + ".ptm"
         agent_state = {"Actor": self.actor.state_dict(),
                        "Critic": self.critic.state_dict(),
                        "best_mean_reward": self.best_mean_reward,
@@ -205,7 +243,7 @@ class DeepActorCriticAgent(mp.Process):
             self.saved_params = True
 
     def load(self):
-        model_file_name = self.params["model_dir"] + "A2C_" + self.env_name + ".ptm"
+        model_file_name = self.params["model_dir"] + "A2C_" + self.env_names[0] + ".ptm"
         agent_state = torch.load(model_file_name, map_location= lambda storage, loc: storage)
         self.actor.load_state_dict(agent_state["Actor"])
         self.critic.load_state_dict(agent_state["Critic"])
@@ -218,15 +256,15 @@ class DeepActorCriticAgent(mp.Process):
               " and an all time best reward of:", self.best_reward)
 
     def run(self):
-        self.env = gym.make(self.env_name)
-        self.state_shape = self.env.observation_space.shape
-        if isinstance(self.env.action_space.sample(), int):  # Discrete action space
-            self.action_shape = self.env.action_space.n
+        self.envs = SubprocVecEnv(self.env_names)
+        self.state_shape = self.envs.observation_space.shape
+        if isinstance(self.envs.action_space.sample(), int):  # Discrete action space
+            self.action_shape = self.envs.action_space.n
             self.policy = self.discrete_policy
             self.continuous_action_space = False
 
         else:  # Continuous action space
-            self.action_shape = self.env.action_space.shape[0]
+            self.action_shape = self.envs.action_space.shape[0]
             self.policy = self.multi_variate_gaussian_policy
         self.critic_shape = 1
         if len(self.state_shape) == 3:  # Screen image is the input to the agent
@@ -261,42 +299,49 @@ class DeepActorCriticAgent(mp.Process):
                 else:
                     print("WARNING: No trained model found for this environment. Training from scratch.")
 
-        for episode in range(self.params["max_num_episodes"]):
-            obs = self.env.reset()
-            done = False
-            ep_reward = 0.0
-            step_num = 0
-            while not done:
-                action = self.get_action(obs)
-                next_obs, reward, done, _ = self.env.step(action)
-                self.rewards.append(reward)
-                ep_reward += reward
-                step_num +=1
-                if not args.test and(step_num >= self.params["learning_step_thresh"] or done):
-                    self.learn(next_obs, done)
-                    step_num = 0
-                    # Monitor performance and save Agent's state when perf improves
-                    if done:
-                        episode_rewards.append(ep_reward)
-                        if ep_reward > self.best_reward:
-                            self.best_reward = ep_reward
-                        if np.mean(episode_rewards) > prev_checkpoint_mean_ep_rew:
-                            num_improved_episodes_before_checkpoint += 1
-                        if num_improved_episodes_before_checkpoint >= self.params["save_freq_when_perf_improves"]:
-                            prev_checkpoint_mean_ep_rew = np.mean(episode_rewards)
-                            self.best_mean_reward = np.mean(episode_rewards)
-                            self.save()
-                            num_improved_episodes_before_checkpoint = 0
+        #for episode in range(self.params["max_num_episodes"]):
+        obs = self.envs.reset()
+        # TODO: Create appropriate masks to take care of envs that have set dones to True & learn() accordingly
+        episode = 0
+        cum_step_rewards = np.zeros(self.params["num_agents"])
+        episode_rewards = []
+        step_num = 0
+        while True:
+            action = self.get_action(obs)
+            next_obs, rewards, dones, _ = self.envs.step(action)
+            self.rewards.append(torch.tensor(rewards))
+            done_env_idxs = np.where(dones)[0]
+            cum_step_rewards += rewards  # nd-array of shape=num_actors
 
-                obs = next_obs
-                self.global_step_num += 1
-                if args.render:
-                    self.env.render()
-                #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
-                writer.add_scalar(self.actor_name + "/reward", reward, self.global_step_num)
-            print("{}:Episode#:{} \t ep_reward:{} \t mean_ep_rew:{}\t best_ep_reward:{}".format(
-                self.actor_name, episode, ep_reward, np.mean(episode_rewards), self.best_reward))
-            writer.add_scalar(self.actor_name + "/ep_reward", ep_reward, self.global_step_num)
+            step_num +=1
+            episode += done_env_idxs.size  # Update the number of finished episodes
+            if not args.test and(step_num >= self.params["learning_step_thresh"] or done_env_idxs.size):
+                self.learn(next_obs, dones)
+                step_num = 0
+                # Monitor performance and save Agent's state when perf improves
+                if done_env_idxs.size > 0:
+                    [episode_rewards.append(r) for r in cum_step_rewards[done_env_idxs] ]
+                    if np.max(cum_step_rewards[done_env_idxs]) > self.best_reward:
+                        self.best_reward = np.max(cum_step_rewards[done_env_idxs])
+                    if np.mean(episode_rewards) > prev_checkpoint_mean_ep_rew:
+                        num_improved_episodes_before_checkpoint += 1
+                    if num_improved_episodes_before_checkpoint >= self.params["save_freq_when_perf_improves"]:
+                        prev_checkpoint_mean_ep_rew = np.mean(episode_rewards)
+                        self.best_mean_reward = np.mean(episode_rewards)
+                        self.save()
+                        num_improved_episodes_before_checkpoint = 0
+                    # Reset the cum_step_rew for the done envs
+                    cum_step_rewards[done_env_idxs] = 0.0
+
+            obs = next_obs
+            self.global_step_num += 1
+            if args.render:
+                self.envs.render()
+            #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
+            writer.add_scalar(self.actor_name + "/reward", np.mean(cum_step_rewards), self.global_step_num)
+            print("{}:Episode#:{} \t avg_step_reward:{:.4} \t mean_ep_rew:{:.4}\t best_ep_reward:{:.4}".format(
+                self.actor_name, episode, np.mean(cum_step_rewards), np.mean(episode_rewards), self.best_reward))
+            writer.add_scalar(self.actor_name + "/mean_ep_rew", np.mean(episode_rewards), self.global_step_num)
 
 
 if __name__ == "__main__":
@@ -304,6 +349,7 @@ if __name__ == "__main__":
     agent_params["model_dir"] = args.model_dir
     mp.set_start_method('spawn')
 
-    agent_procs =[DeepActorCriticAgent(id, args.env, agent_params) for id in range(agent_params["num_agents"])]
-    [p.start() for p in agent_procs]
-    [p.join() for p in agent_procs]
+    env_names = [args.env] * agent_params["num_agents"]
+
+    agent = DeepActorCriticAgent(0, env_names , agent_params)
+    agent.run()
