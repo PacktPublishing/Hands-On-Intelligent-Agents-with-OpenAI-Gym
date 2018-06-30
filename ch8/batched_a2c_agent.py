@@ -313,7 +313,7 @@ class DeepActorCriticAgent():
             done_env_idxs = np.where(dones)[0]
             cum_step_rewards += rewards  # nd-array of shape=num_actors
 
-            step_num +=1
+            step_num += self.params["num_agents"]
             episode += done_env_idxs.size  # Update the number of finished episodes
             if not args.test and(step_num >= self.params["learning_step_thresh"] or done_env_idxs.size):
                 self.learn(next_obs, dones)
@@ -337,13 +337,11 @@ class DeepActorCriticAgent():
                     cum_step_rewards[done_env_idxs] = 0.0
 
             obs = next_obs
-            self.global_step_num += 1
+            self.global_step_num += self.params["num_agents"]
             if args.render:
                 self.envs.render()
             #print(self.actor_name + ":Episode#:", episode, "step#:", step_num, "\t rew=", reward, end="\r")
-            writer.add_scalar(self.actor_name + "/reward", np.mean(cum_step_rewards), self.global_step_num)
-            print("{}:Episode#:{} \t avg_step_reward:{:.4} \t mean_ep_rew:{:.4}\t best_ep_reward:{:.4}".format(
-                self.actor_name, episode, np.mean(cum_step_rewards), np.mean(episode_rewards), self.best_reward))
+            writer.add_scalar(self.actor_name + "/reward", np.mean(cum_step_rewards), self.global_step_num) print("{}:Episode#:{} \t avg_step_reward:{:.4} \t mean_ep_rew:{:.4}\t best_ep_reward:{:.4}".format( self.actor_name, episode, np.mean(cum_step_rewards), np.mean(episode_rewards), self.best_reward))
 
 
 if __name__ == "__main__":
