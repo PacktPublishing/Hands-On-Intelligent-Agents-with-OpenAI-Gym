@@ -173,28 +173,32 @@ class DeepActorCriticAgent():
     def calculate_loss(self, trajectory, td_targets):
         """
         Calculates the critic and actor losses using the td_targets and self.trajectory
-        :param td_targets:
+        :param trajectory: List of trajectories from all the actors
+        :param td_targets: Tensor of shape:(num_actors, num_steps, 1)
         :return:
         """
         n_step_trajectory = Transition(*zip(*trajectory))
-        v_s_batch = n_step_trajectory.value_s
-        log_prob_a_batch = n_step_trajectory.log_prob_a
-        actor_loss, critic_loss = [], []
-        for td_target, critic_prediction, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
-            td_err = td_target - critic_prediction
-            actor_loss.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
-            critic_loss.append(F.smooth_l1_loss(critic_prediction, td_target))
+        # n_step_trajectory.x returns a list of length= num_steps containing num_actors x shape_of_x items
+        # 1. Create tensor of shape:(num_steps x num_actors x shape_of_x) (using torch.stack())
+        # 2. Reshape the tensor to be of shape:(num_actors x num_steps x shape_of_x) (using torch.transpose(1,0)
+        v_s_batch = torch.stack(n_step_trajectory.value_s).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
+        log_prob_a_batch = torch.stack(n_step_trajectory.log_prob_a).transpose(1, 0)  # shape:(num_actors, num_steps, 1)
+        actor_losses, critic_losses = [], []
+        for td_targets, critic_predictions, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
+            td_err = td_targets - critic_predictions
+            actor_losses.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
+            critic_losses.append(F.smooth_l1_loss(critic_predictions, td_targets))
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
-        actor_loss = torch.stack(actor_loss).mean()
-        critic_loss = torch.stack(critic_loss).mean()
+        actor_loss = torch.stack(actor_losses).mean()
+        critic_loss = torch.stack(critic_losses).mean()
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
         writer.add_scalar(self.actor_name + "/actor_loss", actor_loss, self.global_step_num)
 
         return actor_loss, critic_loss
 
-    def learn(self, n_th_observation, done):
-        td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
+    def learn(self, n_th_observations, dones):
+        td_targets = self.calculate_n_step_return(self.rewards, n_th_observations, dones, self.gamma)
         actor_loss, critic_loss = self.calculate_loss(self.trajectory, td_targets)
 
         self.actor_optimizer.zero_grad()
