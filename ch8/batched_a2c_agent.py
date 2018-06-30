@@ -133,27 +133,42 @@ class DeepActorCriticAgent():
         obs = self.preproc_obs(obs)
         action_distribution = self.policy(obs)  # Call to self.policy(obs) also populates self.value with V(obs)
         value = self.value
-        action = action_distribution.sample()
-        log_prob_a = action_distribution.log_prob(action)
-        action = self.process_action(action)
-        self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
-        return action
-
-    def calculate_n_step_return(self, n_step_rewards, final_state, done, gamma):
+        actions = action_distributions.sample()
+        log_prob_a = action_distributions.log_prob(actions)
+        actions = self.process_action(actions)
+        self.trajectory.append(Transition(obs, value, actions, log_prob_a))  # Construct the trajectory
+        return actions
+    # TODO: rename num_agents to num_actors in parameters.json file to be consistent with comments
+    def calculate_n_step_return(self, n_step_rewards, next_states, dones, gamma):
         """
-        Calculates the n-step return for each state in the input-trajectory/n_step_transitions
-        :param n_step_rewards: List of rewards for each step
-        :param final_state: Final state in this n_step_transition/trajectory
-        :param done: True rf the final state is a terminal state if not, False
+        Calculates the n-step return for each state in the input-trajectory/n_step_transitions for the "done" actors
+        :param n_step_rewards: List of length=num_steps containing rewards of shape=(num_actors x 1)
+        :param next_states: list of length=num_actors containing next observations of shape=(obs_shape)
+        :param dones: list of length=num_actors containing True if the next_state is a terminal state if not, False
         :return: The n-step return for each state in the n_step_transitions
         """
         g_t_n_s = list()
         with torch.no_grad():
-            g_t_n = torch.tensor([[0]]).float() if done else self.critic(self.preproc_obs(final_state)).cpu()
-            for r_t in n_step_rewards[::-1]:  # Reverse order; From r_tpn to r_t
-                g_t_n = torch.tensor(r_t).float() + self.gamma * g_t_n
-                g_t_n_s.insert(0, g_t_n)  # n-step returns inserted to the left to maintain correct index order
-            return g_t_n_s
+            # 1. Calculate next-state values for each actor:
+            #    a. If next_state is terminal (done[actor_idx]=True), set g_t_n[actor_idx]=0
+            #    b. If next_state is non-terminal (done[actor_idx]=False), set g_t_n[actor_idx] to Critic's prediction
+            g_t_n = torch.tensor([[not d] for d  in dones]).float()  # 1. a.
+            # See if there is at least one non-terminal next-state
+            if np.where([not d for d in dones])[0].size > 0:
+                non_terminal_idxs = torch.tensor(np.where([not d for d in dones])).squeeze(0)
+                g_t_n[non_terminal_idxs] = self.critic(self.preproc_obs(next_states[non_terminal_idxs])).cpu()  # 1. b.
+            g_t_n_s_batch = []
+            n_step_rewards = torch.stack(n_step_rewards)  # tensor of shape (num_steps x num_actors x 1)
+            # For each actor
+            for actor_idx in range(n_step_rewards.shape[1]):
+                actor_n_step_rewards = n_step_rewards.index_select(1, torch.tensor([actor_idx]))  # shape:(num_steps,1)
+                g_t_n_s = []
+                # Calculate n number of n-step returns
+                for r_t in actor_n_step_rewards.numpy()[::-1]:  # Reverse order; From r_tpn to r_t; PyTorch can't slice in reverse #229
+                    g_t_n[actor_idx] = torch.tensor(r_t).float() + self.gamma * g_t_n[actor_idx]
+                    g_t_n_s.insert(0, g_t_n[actor_idx].clone())  # n-step returns inserted to the left to maintain correct index order
+                g_t_n_s_batch.append(g_t_n_s)
+            return torch.tensor(g_t_n_s_batch)  # tensor of shape:(num_actors, num_steps, 1)
 
     def calculate_loss(self, trajectory, td_targets):
         """
