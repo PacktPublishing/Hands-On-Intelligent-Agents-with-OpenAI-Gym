@@ -94,7 +94,7 @@ class DeepActorCriticAgent():
         self.value = value.to(torch.device("cpu"))
         if len(self.mu[0].shape) == 0: # See if mu is a scalar
             self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
-        self.covariance = torch.eye(self.action_shape) * self.sigma
+        self.covariance = torch.stack([torch.eye(self.action_shape) * s for s in self.sigma])
         if self.action_shape == 1:
             self.covariance = self.sigma.unsqueeze(-1)  # Make the covariance a square mat to avoid RuntimeError with MultivariateNormal
         self.action_distribution = MultivariateNormal(self.mu, self.covariance)
