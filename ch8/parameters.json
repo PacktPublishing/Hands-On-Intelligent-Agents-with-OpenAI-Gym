@@ -4,7 +4,7 @@
   },
 
   "agent":{
-    "num_agents": 4,
+    "num_agents": 2,
     "seed": 1,
     "summary_file_path_prefix": "./logs/",
     "use_cuda": true,
@@ -13,7 +13,8 @@
     "gamma": 0.99,
     "learning_step_thresh": 10,
     "load_trained_model": true,
-    "save_freq_when_perf_improves": 10
+    "save_freq_when_perf_improves": 10,
+    "use_entropy_bonus": true
 
 
   }

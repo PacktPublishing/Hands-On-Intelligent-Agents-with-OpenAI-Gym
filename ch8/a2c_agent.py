@@ -161,14 +161,17 @@ class DeepActorCriticAgent(mp.Process):
         n_step_trajectory = Transition(*zip(*trajectory))
         v_s_batch = n_step_trajectory.value_s
         log_prob_a_batch = n_step_trajectory.log_prob_a
-        actor_loss, critic_loss = [], []
+        actor_losses, critic_losses = [], []
         for td_target, critic_prediction, log_p_a in zip(td_targets, v_s_batch, log_prob_a_batch):
             td_err = td_target - critic_prediction
-            actor_loss.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
-            critic_loss.append(F.smooth_l1_loss(critic_prediction, td_target))
+            actor_losses.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
+            critic_losses.append(F.smooth_l1_loss(critic_prediction, td_target))
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
-        actor_loss = torch.stack(actor_loss).mean()
-        critic_loss = torch.stack(critic_loss).mean()
+        if self.params["use_entropy_bonus"]:
+            actor_loss = torch.stack(actor_losses).mean() - self.action_distribution.entropy().mean()
+        else:
+            actor_loss = torch.stack(actor_losses).mean()
+        critic_loss = torch.stack(critic_losses).mean()
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
         writer.add_scalar(self.actor_name + "/actor_loss", actor_loss, self.global_step_num)

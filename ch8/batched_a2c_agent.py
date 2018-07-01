@@ -190,8 +190,10 @@ class DeepActorCriticAgent():
             actor_losses.append(- log_p_a * td_err)  # td_err is an unbiased estimated of Advantage
             critic_losses.append(F.smooth_l1_loss(critic_predictions, td_targets))
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
-
-        actor_loss = torch.stack(actor_losses).mean() - self.action_distribution.entropy().mean()
+        if self.params["use_entropy_bonus"]:
+            actor_loss = torch.stack(actor_losses).mean() - self.action_distribution.entropy().mean()
+        else:
+            actor_loss = torch.stack(actor_losses).mean()
         critic_loss = torch.stack(critic_losses).mean()
 
         writer.add_scalar(self.actor_name + "/critic_loss", critic_loss, self.global_step_num)
