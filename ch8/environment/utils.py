@@ -3,6 +3,7 @@ import multiprocessing as mp
 import gym
 from abc import ABC, abstractmethod
 import numpy as np
+import cv2
 
 class VecEnv(ABC):
     """
@@ -70,6 +71,16 @@ class VecEnv(ABC):
         return self
 
 
+class ResizeFrame(gym.ObservationWrapper):
+    def __init__(self,env):
+        gym.ObservationWrapper.__init__(self, env)
+        self.desired_width = 84  # Change this as necessary. 84 is not a magic number.
+        self.desired_height = 84
+    def observation(self, obs):
+        if len(obs.shape) == 3:  # Observations are image frames
+            obs = cv2.resize(obs, (self.desired_width, self.desired_height))
+        return obs
+
 def run_env_in_sep_proc(env_name, shared_pipe, parent_pipe, stack=False, scale_rew=False):
     """
     Create and run an environment instance (remote or local) in a separate proc
@@ -82,6 +93,7 @@ def run_env_in_sep_proc(env_name, shared_pipe, parent_pipe, stack=False, scale_r
     #    env = RewardScaler(env)
     #env = CustomWarpFrame(env)
     #env = NormalizedEnv(env)
+    env = ResizeFrame(env)
 
     while True:
         method, data = shared_pipe.recv()
