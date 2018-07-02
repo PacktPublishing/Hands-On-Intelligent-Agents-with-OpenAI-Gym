@@ -212,7 +212,7 @@ class DeepActorCriticAgent(mp.Process):
         self.rewards.clear()
 
     def save(self):
-        model_file_name = self.params["model_dir"] + "A2C_" + self.env_name + ".ptm"
+        model_file_name = self.params["model_dir"] + "Async-A2C_" + self.env_name + ".ptm"
         agent_state = {"Actor": self.actor.state_dict(),
                        "Critic": self.critic.state_dict(),
                        "best_mean_reward": self.best_mean_reward,
@@ -226,7 +226,7 @@ class DeepActorCriticAgent(mp.Process):
             self.saved_params = True
 
     def load(self):
-        model_file_name = self.params["model_dir"] + "A2C_" + self.env_name + ".ptm"
+        model_file_name = self.params["model_dir"] + "Async-A2C_" + self.env_name + ".ptm"
         agent_state = torch.load(model_file_name, map_location= lambda storage, loc: storage)
         self.actor.load_state_dict(agent_state["Actor"])
         self.critic.load_state_dict(agent_state["Critic"])
