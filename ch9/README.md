@@ -26,3 +26,21 @@ python: render-simple.cpp:250: void SimpleRender::Context::initGL(): Assertion `
 
 Then, add the following line at the top of the demo script or to your script which are are trying to run:
 `from OpenGL import GLU`
+
+The available Roboschool environments along with their observation and action spaces are summarized in the table
+below for quick references:
+
+|Env ID | Roboschool env | obs space | action space|
+|---------------------|------|-----|--------|
+|RoboschoolInvertedPendulum-v1|![](./roboschool_clips/RoboschoolInvertedPendulum-v1/combined.gif)|Box(5,)|Box(1,)| 
+|RoboschoolInvertedPendulumSwingup-v1|![](./roboschool_clips/RoboschoolInvertedPendulumSwingup-v1/combined.gif)|Box(5,)|Box(1,)| 
+|RoboschoolInvertedDoublePendulum-v1| ![](./roboschool_clips/RoboschoolInvertedDoublePendulum-v1/combined.gif)|Box(9,)|Box(1,)| 
+|RoboschoolReacher-v1| ![](./roboschool_clips/RoboschoolReacher-v1/combined.gif)|Box(9,)|Box(2,)| 
+|RoboschoolHopper-v1| ![](./roboschool_clips/RoboschoolHopper-v1/combined.gif)|Box(15,)|Box(3,)| 
+|RoboschoolWalker2d-v1| ![](./roboschool_clips/RoboschoolWalker2d-v1/combined.gif)|Box(22,)|Box(6,)| 
+|RoboschoolHalfCheetah-v1| ![](./roboschool_clips/RoboschoolHalfCheetah-v1/combined.gif)|Box(26,)|Box(6,)| 
+|RoboschoolAnt-v1| ![](./roboschool_clips/RoboschoolAnt-v1/combined.gif)|Box(28,)|Box(8,)| 
+|RoboschoolHumanoid-v1| ![](./roboschool_clips/RoboschoolHumanoid-v1/combined.gif)|Box(44,)|Box(17,)| 
+|RoboschoolHumanoidFlagrun-v1|![](./roboschool_clips/RoboschoolHumanoidFlagrun-v1/combined.gif)|Box(44,)|Box(17,)| 
+|RoboschoolHumanoidFlagrunHarder-v1|![](./roboschool_clips/RoboschoolHumanoidFlagrunHarder-v1/combined.gif)|Box(44,)|Box(17,)| 
+|RoboschoolPong-v1|![](./roboschool_clips/RoboschoolPong-v1/combined.gif)|Box(13,)|Box(2,)| 
