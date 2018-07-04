@@ -24,4 +24,4 @@ echo "$(tput setaf 2) Successfully installed and setup Bazel"
 echo "$(tput setaf 2) Step 2/2 Cloning DeepMind Lab"
 git clone https://github.com/deepmind/lab deepmindlab 
 echo "$(tput setaf 2) Setup is now complete. You may now run a live example of a random agent by executing the following command"
-echo "$(tput setaf 1) cd deepmindlab && bazel run :python_random_agent --define graphics=sdl --length=10000$(tput sgr0)"
+echo "$(tput setaf 1) cd deepmindlab && bazel run :python_random_agent --define graphics=sdl -- --length=10000$(tput sgr0)"
