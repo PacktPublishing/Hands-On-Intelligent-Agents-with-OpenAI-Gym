@@ -16,16 +16,11 @@ from datetime import datetime
 from argparse import ArgumentParser
 
 args = ArgumentParser("deep_Q_learner")
-args.add_argument("--params-file",
-                  help="Path to the parameters json file. Default is parameters.json",
-                  default="parameters.json",
-                  type=str,
-                  metavar="PFILE")
-args.add_argument("--env-name",
-                  help="ID of the Atari environment available in OpenAI Gym. Default is Pong-v0",
-                  default="Pong-v0",
-                  type=str,
-                  metavar="ENV")
+args.add_argument("--params-file", help="Path to the parameters json file. Default is parameters.json",
+                  default="parameters.json", metavar="PFILE")
+args.add_argument("--env-name", help="ID of the Atari environment available in OpenAI Gym. Default is Pong-v0",
+                  default="Pong-v0", metavar="ENV")
+args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0, type=int, metavar="GPU_ID")
 args = args.parse_args()
 
 params_manager= ParamsManager(args.params_file)
@@ -39,7 +34,7 @@ params_manager.export_agent_params(summary_file_path + "/" + "agent_params.json"
 global_step_num = 0
 use_cuda = params_manager.get_agent_params()['use_cuda']
 # new in PyTorch 0.4
-device = torch.device("cuda" if torch.cuda.is_available() and use_cuda else "cpu")
+device = torch.device("cuda:" + str(args.gpu_id) if torch.cuda.is_available() and use_cuda else "cpu")
 torch.manual_seed(seed)
 np.random.seed(seed)
 if torch.cuda.is_available() and use_cuda:
