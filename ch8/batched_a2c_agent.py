@@ -115,10 +115,10 @@ class DeepActorCriticAgent():
 
     def preproc_obs(self, obs):
         if len(obs[0].shape) == 3:  # shape of obs:(num_agents, obs_im_height, obs_im_width, obs_num_channels)
-            #  Make sure the obs are in this order: C x W x H and add a batch dimension
+            #  Reshape obs from (B x H x W x C) order to this order: B x C x W x H and resize to (C x 84 x 84)
             obs = np.reshape(obs, (-1, obs.shape[3], obs.shape[2], obs.shape[1]))
             #  The environment wrapper already takes care of reshaping image obs into 84 x 84 x C. Can be skipped
-            obs = np.resize(obs, (-1, 3, 84, 84))
+            obs = np.resize(obs, (-1, obs.shape[1], 84, 84))
         #  Convert to torch Tensor, convert to float repr
         obs = torch.from_numpy(obs).float()
         return obs
