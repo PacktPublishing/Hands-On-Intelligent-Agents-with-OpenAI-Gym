@@ -25,12 +25,21 @@ from gym.spaces import Box, Discrete, Tuple
 SERVER_BINARY = os.environ.get(
     "CARLA_SERVER", os.path.expanduser("~/software/CARLA_0.8.2/CarlaUE4.sh"))
 assert os.path.exists(SERVER_BINARY), "CARLA_SERVER environment variable is not set properly. Please check and retry"
+
+
 # Import Carla python client API funcs
-from carla.client import CarlaClient
-from carla.sensor import Camera
-from carla.settings import CarlaSettings
-from carla.planner.planner import Planner, REACH_GOAL, GO_STRAIGHT, \
-    TURN_RIGHT, TURN_LEFT, LANE_FOLLOW
+try:
+    from carla.client import CarlaClient
+    from carla.sensor import Camera
+    from carla.settings import CarlaSettings
+    from carla.planner.planner import Planner, REACH_GOAL, GO_STRAIGHT, \
+        TURN_RIGHT, TURN_LEFT, LANE_FOLLOW
+except ImportError:
+    from .carla.client import CarlaClient
+    from .carla.sensor import Camera
+    from .carla.settings import CarlaSettings
+    from .carla.planner.planner import Planner, REACH_GOAL, GO_STRAIGHT, \
+        TURN_RIGHT, TURN_LEFT, LANE_FOLLOW
 
 # Carla planner commands
 COMMANDS_ENUM = {
