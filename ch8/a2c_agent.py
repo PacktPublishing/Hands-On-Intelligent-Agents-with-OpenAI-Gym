@@ -23,7 +23,7 @@ from function_approximator.deep import DiscreteActor as DeepDiscreteActor
 from function_approximator.deep import Critic as DeepCritic
 
 parser = ArgumentParser("deep_ac_agent")
-parser.add_argument("--env", help="Name of the Gym environment", default="CarRacing-v0", metavar="ENV_ID")
+parser.add_argument("--env", help="Name of the Gym environment", default="Pendulum-v0", metavar="ENV_ID")
 parser.add_argument("--params-file", help="Path to the parameters file. Default= ./parameters.json",
                     default="parameters.json", metavar="PFILE.json")
 parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
@@ -58,9 +58,10 @@ Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 class DeepActorCriticAgent(mp.Process):
     def __init__(self, id, env_name, agent_params):
         """
-        An Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
-        :param state_shape:
-        :param action_shape:
+        An Advantage Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
+        :param id: An integer ID to identify the agent in case there are multiple agent instances
+        :param env_name: Name/ID of the environment
+        :param agent_params: Parameters to be used by the agent
         """
         super(DeepActorCriticAgent, self).__init__()
         self.id = id
