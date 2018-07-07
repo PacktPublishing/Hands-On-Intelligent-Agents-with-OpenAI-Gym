@@ -1,5 +1,6 @@
-# Hands-on Intelligent Agents with OpenAI Gym
+# Hands-on Intelligent Agents with OpenAI Gym (HOIAWOG)
 
+HOIAWOG!
 This is the code repository for the [Hands-On Intelligent Agents with OpenAI Gym](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) book.
 
 - Chapter 1: Introduction to Intelligent Agents and Learning Environments :space_invader:
@@ -10,5 +11,6 @@ This is the code repository for the [Hands-On Intelligent Agents with OpenAI Gym
 - [Chapter 6: Implementing an Intelligent Agent for Optimal Control using Deep Q Learning](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch6)
 - [Chapter 7: Creating custom OpenAI gym environments - Carla driving simulator](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch7)
 - [Chapter 8: Implementing an Intelligent & Autonomous Car Driving Agent using Deep Actor-Critic Algorithm](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch8)
-- [Chapter 9: Exploring the Learning Environment Landscape: Roboschool, Gym-Retro, StarCraftII, DeepMindLab](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch9)
+- [Chapter 9: Exploring the Learning Environment Landscape: Roboschool, Gym-Retro, StarCraft-II, DeepMindLab](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch9)
+- Chapter 10: Exploring the Learning Algorithm Landscape: DDPG (Actor-Critic), PPO (Policy-Gradient), Rainbow (Value-based)
 
