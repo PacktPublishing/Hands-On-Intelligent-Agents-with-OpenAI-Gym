@@ -68,12 +68,13 @@ scenario_config['Weather_distribution'] = weathers
 
 # Default environment configuration
 ENV_CONFIG = {
-    "enable_planner": True,
-    "use_depth_camera": False,
     "discrete_actions": True,
+    "use_image_only_observations": True,  # Exclude high-level planner inputs & goal info from the observations
     "server_map": "/Game/Maps/" + city,
     "scenarios": [scenario_config["Lane_Keep_Town2"]],
     "framestack": 2,  # note: only [1, 2] currently supported
+    "enable_planner": True,
+    "use_depth_camera": False,
     "early_terminate_on_collision": True,
     "verbose": False,
     "render_x_res": 800,
@@ -135,10 +136,13 @@ class CarlaEnv(gym.Env):
                 0.0, 255.0, shape=(
                     config["y_res"], config["x_res"],
                     3 * config["framestack"]), dtype=np.float32)
-        self.observation_space = Tuple(
-            [image_space,
-             Discrete(len(COMMANDS_ENUM)),  # next_command
-             Box(-128.0, 128.0, shape=(2,), dtype=np.float32)])  # forward_speed, dist to goal
+        if self.config["use_image_only_observations"]:
+            self.observation_space = image_space
+        else:
+            self.observation_space = Tuple(
+                [image_space,
+                 Discrete(len(COMMANDS_ENUM)),  # next_command
+                 Box(-128.0, 128.0, shape=(2,), dtype=np.float32)])  # forward_speed, dist to goal
 
         self._spec = lambda: None
         self._spec.id = "Carla-v0"
@@ -285,11 +289,14 @@ class CarlaEnv(gym.Env):
             prev_image = image
         if self.config["framestack"] == 2:
             image = np.concatenate([prev_image, image], axis=2)
-        obs = (
-            image,
-            COMMAND_ORDINAL[py_measurements["next_command"]],
-            [py_measurements["forward_speed"],
-             py_measurements["distance_to_goal"]])
+        if self.config["use_image_only_observations"]:
+            obs = image
+        else:
+            obs = (
+                image,
+                COMMAND_ORDINAL[py_measurements["next_command"]],
+                [py_measurements["forward_speed"],
+                 py_measurements["distance_to_goal"]])
         self.last_obs = obs
         return obs
 
@@ -470,7 +477,7 @@ class CarlaEnv(gym.Env):
 
         prev_dist = self.prev_measurement["distance_to_goal"]
 
-        if env.config["verbose"]:
+        if self.config["verbose"]:
             print("Cur dist {}, prev dist {}".format(cur_dist, prev_dist))
 
         # Distance travelled toward the goal in m
