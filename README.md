@@ -1,7 +1,7 @@
 # Hands-on Intelligent Agents with OpenAI Gym (HOIAWOG)
+![](https://praveenp.com/projects/HOIAWOG/output.gif)
 
-HOIAWOG!
-This is the code repository for the [Hands-On Intelligent Agents with OpenAI Gym](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) book.
+**HOIAWOG!** This is the code repository for the [Hands-On Intelligent Agents with OpenAI Gym](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) book.
 
 - Chapter 1: Introduction to Intelligent Agents and Learning Environments :space_invader:
 - Chapter 2: Reinforcement Learning and Deep Reinforcement Learning 
