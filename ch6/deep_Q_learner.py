@@ -21,6 +21,7 @@ args.add_argument("--params-file", help="Path to the parameters json file. Defau
 args.add_argument("--env-name", help="ID of the Atari environment available in OpenAI Gym. Default is Pong-v0",
                   default="Pong-v0", metavar="ENV")
 args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0, type=int, metavar="GPU_ID")
+args.add_argument("--render", help="Render environment to Screen. Off by default", action="store_true", default=False)
 args = args.parse_args()
 
 params_manager= ParamsManager(args.params_file)
@@ -219,7 +220,7 @@ if __name__ == "__main__":
         step = 0
         #for step in range(agent_params['max_steps_per_episode']):
         while not done:
-            if env_conf['render']:
+            if env_conf['render'] or args.render:
                 env.render()
             action = agent.get_action(obs / 255.0)  # Scale/Divide by max limit of obs' dtype. 255 for uint8
             next_obs, reward, done, info = env.step(action)
