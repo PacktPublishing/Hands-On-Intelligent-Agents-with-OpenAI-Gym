@@ -22,6 +22,8 @@ args.add_argument("--env-name", help="ID of the Atari environment available in O
                   default="Pong-v0", metavar="ENV")
 args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0, type=int, metavar="GPU_ID")
 args.add_argument("--render", help="Render environment to Screen. Off by default", action="store_true", default=False)
+args.add_argument("--test", help="Test mode. Used for playing without learning. Off by default", action="store_true",
+                  default=False)
 args = args.parse_args()
 
 params_manager= ParamsManager(args.params_file)
@@ -248,7 +250,8 @@ if __name__ == "__main__":
                 writer.add_scalar("main/ep_reward", cum_reward, global_step_num)
                 writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), global_step_num)
                 writer.add_scalar("main/max_ep_rew", agent.best_reward, global_step_num)
-                if agent.memory.get_size() >= 2 * agent_params['replay_batch_size']:
+                # Learn from batches of experience once a certain amount of xp is available unless in test only mode
+                if agent.memory.get_size() >= 2 * agent_params['replay_batch_size'] and not args.test:
                     agent.replay_experience()
 
                 break
