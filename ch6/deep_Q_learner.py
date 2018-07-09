@@ -101,8 +101,6 @@ class Deep_Q_Learner(object):
             action = random.choice([i for i in range(self.action_shape)])
         else:
             action = np.argmax(self.Q(observation).data.to(torch.device('cpu')).numpy())
-
-
         return action
 
     def learn(self, s, a, r, s_next, done):
@@ -227,7 +225,7 @@ if __name__ == "__main__":
         while not done:
             if env_conf['render'] or args.render:
                 env.render()
-            action = agent.get_action(obs / 255.0)  # Scale/Divide by max limit of obs' dtype. 255 for uint8
+            action = agent.get_action(np.array(obs) / 255.0)  # Scale/Divide by max limit of obs' dtype. 255 for uint8
             next_obs, reward, done, info = env.step(action)
             #agent.learn(obs, action, reward, next_obs, done)
             agent.memory.store(Experience(obs, action, reward, next_obs, done))

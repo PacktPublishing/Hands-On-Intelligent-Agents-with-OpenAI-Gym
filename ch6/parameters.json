@@ -23,6 +23,7 @@
     "type": "Atari",
     "episodic_life": true,
     "skip_rate": 1,
+    "num_frames_to_stack": 4,
     "render": false,
     "normalize_observation": false,
     "useful_region": {
