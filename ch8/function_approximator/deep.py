@@ -57,15 +57,15 @@ class DiscreteActor(torch.nn.Module):
         """
         super(DiscreteActor, self).__init__()
         self.device = device
-        self.layer1 = torch.nn.Sequential(torch.nn.Conv2d(input_shape[2], 128, 3, stride=1, padding=0),
+        self.layer1 = torch.nn.Sequential(torch.nn.Conv2d(input_shape[2], 32, 8, stride=4, padding=0),
                                           torch.nn.ReLU())
-        self.layer2 = torch.nn.Sequential(torch.nn.Conv2d(128, 64, 3, stride=1, padding=0),
+        self.layer2 = torch.nn.Sequential(torch.nn.Conv2d(32, 64, 3, stride=2, padding=0),
                                           torch.nn.ReLU())
-        self.layer3 = torch.nn.Sequential(torch.nn.Conv2d(64, 32, 3, stride=1, padding=0),
+        self.layer3 = torch.nn.Sequential(torch.nn.Conv2d(64, 64, 3, stride=1, padding=0),
                                           torch.nn.ReLU())
-        self.layer4 = torch.nn.Sequential(torch.nn.Linear(32 * 78 * 78, 2048),
+        self.layer4 = torch.nn.Sequential(torch.nn.Linear(64 * 7 * 7, 512),
                                           torch.nn.ReLU())
-        self.logits = torch.nn.Linear(2048, actor_shape)
+        self.logits = torch.nn.Linear(512, actor_shape)
 
     def forward(self, x):
         """
@@ -95,15 +95,15 @@ class Critic(torch.nn.Module):
         """
         super(Critic, self).__init__()
         self.device = device
-        self.layer1 = torch.nn.Sequential(torch.nn.Conv2d(input_shape[2], 128, 3, stride=1, padding=0),
+        self.layer1 = torch.nn.Sequential(torch.nn.Conv2d(input_shape[2], 32, 8, stride=4, padding=0),
                                           torch.nn.ReLU())
-        self.layer2 = torch.nn.Sequential(torch.nn.Conv2d(128, 64, 3, stride=1, padding=0),
+        self.layer2 = torch.nn.Sequential(torch.nn.Conv2d(32, 64, 3, stride=2, padding=0),
                                           torch.nn.ReLU())
-        self.layer3 = torch.nn.Sequential(torch.nn.Conv2d(64, 32, 3, stride=1, padding=0),
+        self.layer3 = torch.nn.Sequential(torch.nn.Conv2d(64, 64, 3, stride=1, padding=0),
                                           torch.nn.ReLU())
-        self.layer4 = torch.nn.Sequential(torch.nn.Linear(32 * 78 * 78, 2048),
+        self.layer4 = torch.nn.Sequential(torch.nn.Linear(64* 7 * 7, 512),
                                           torch.nn.ReLU())
-        self.critic = torch.nn.Linear(2048, critic_shape)
+        self.critic = torch.nn.Linear(512, critic_shape)
 
     def forward(self, x):
         """
