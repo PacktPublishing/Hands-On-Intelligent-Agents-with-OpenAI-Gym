@@ -10,6 +10,7 @@
     "gamma": 0.98,
     "epsilon_max": 1.0,
     "epsilon_min": 0.05,
+    "clip_rewards": true,
     "seed": 555,
     "use_cuda": true,
     "summary_file_path_prefix": "logs/DQL_",
@@ -21,8 +22,7 @@
   "env": {
     "type": "Atari",
     "episodic_life": true,
-    "clip_reward": true,
-    "skip_rate": 4,
+    "skip_rate": 1,
     "render": false,
     "normalize_observation": false,
     "useful_region": {

@@ -18,8 +18,8 @@ from argparse import ArgumentParser
 args = ArgumentParser("deep_Q_learner")
 args.add_argument("--params-file", help="Path to the parameters json file. Default is parameters.json",
                   default="parameters.json", metavar="PFILE")
-args.add_argument("--env-name", help="ID of the Atari environment available in OpenAI Gym. Default is Pong-v0",
-                  default="Pong-v0", metavar="ENV")
+args.add_argument("--env-name", help="ID of the Atari environment available in OpenAI Gym. Default is Seaquest-v0",
+                  default="Seaquest-v0", metavar="ENV")
 args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0, type=int, metavar="GPU_ID")
 args.add_argument("--render", help="Render environment to Screen. Off by default", action="store_true", default=False)
 args.add_argument("--test", help="Test mode. Used for playing without learning. Off by default", action="store_true",
@@ -123,6 +123,9 @@ class Deep_Q_Learner(object):
         obs_batch = np.array(batch_xp.obs) / 255.0  # Scale/Divide by max limit of obs's dtype. 255 for uint8
         action_batch = np.array(batch_xp.action)
         reward_batch = np.array(batch_xp.reward)
+        # Clip the rewards
+        if self.params["clip_rewards"]:
+            reward_batch = np.sign(reward_batch)
         next_obs_batch = np.array(batch_xp.next_obs) / 255.0  # Scale/Divide by max limit of obs' dtype. 255 for uint8
         done_batch = np.array(batch_xp.done)
 
