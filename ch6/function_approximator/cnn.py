@@ -14,18 +14,18 @@ class CNN(torch.nn.Module):
         super(CNN, self).__init__()
         self.device = device
         self.layer1 = torch.nn.Sequential(
-            torch.nn.Conv2d(input_shape[0], 64, kernel_size=4, stride=2, padding=1),
+            torch.nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4, padding=0),
             torch.nn.ReLU()
         )
         self.layer2 = torch.nn.Sequential(
-            torch.nn.Conv2d(64, 32, kernel_size=4, stride=2, padding=0),
+            torch.nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=0),
             torch.nn.ReLU()
         )
         self.layer3 = torch.nn.Sequential(
-            torch.nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=0),
+            torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
             torch.nn.ReLU()
         )
-        self.out = torch.nn.Linear(18 * 18 * 32, output_shape)
+        self.out = torch.nn.Linear(64 * 7 * 7, output_shape)
 
     def forward(self, x):
         x = torch.from_numpy(x).float().to(self.device)
