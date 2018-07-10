@@ -218,7 +218,9 @@ if __name__ == "__main__":
         except FileNotFoundError:
             print("WARNING: No trained model found for this environment. Training from scratch.")
 
-    for episode in range(agent_params['max_num_episodes']):
+    #for episode in range(agent_params['max_num_episodes']):
+    episode = 0
+    while global_step_num <= agent_params['max_training_steps']:
         obs = env.reset()
         cum_reward = 0.0  # Cumulative reward
         done = False
@@ -238,6 +240,7 @@ if __name__ == "__main__":
             global_step_num +=1
 
             if done is True:
+                episode += 1
                 episode_rewards.append(cum_reward)
                 if cum_reward > agent.best_reward:
                     agent.best_reward = cum_reward
@@ -254,7 +257,7 @@ if __name__ == "__main__":
                 writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), global_step_num)
                 writer.add_scalar("main/max_ep_rew", agent.best_reward, global_step_num)
                 # Learn from batches of experience once a certain amount of xp is available unless in test only mode
-                if agent.memory.get_size() >= 2 * agent_params['replay_batch_size'] and not args.test:
+                if agent.memory.get_size() >= 2 * agent_params['replay_start_size'] and not args.test:
                     agent.replay_experience()
 
                 break
