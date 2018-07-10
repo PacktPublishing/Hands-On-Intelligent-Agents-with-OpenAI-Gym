@@ -39,8 +39,9 @@ args = parser.parse_args()
 
 global_step_num = 0
 params_manager= ParamsManager(args.params_file)
+agent_algo = "A2C"
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
-summary_file_path= summary_file_path_prefix + args.env + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+summary_file_path= summary_file_path_prefix + agent_algo+'_'+ args.env + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_path)
 # Export the parameters as json files to the log directory to keep track of the parameters used in each experiment
 params_manager.export_env_params(summary_file_path + "/" + "env_params.json")
