@@ -22,11 +22,12 @@ from function_approximator.deep import Actor as DeepActor
 from function_approximator.deep import DiscreteActor as DeepDiscreteActor
 from function_approximator.deep import Critic as DeepCritic
 from environment import carla_gym
+import environment.atari as Atari
 
 parser = ArgumentParser("deep_ac_agent")
 parser.add_argument("--env", help="Name of the Gym environment", default="Pendulum-v0", metavar="ENV_ID")
 parser.add_argument("--params-file", help="Path to the parameters file. Default= ./parameters.json",
-                    default="parameters.json", metavar="PFILE.json")
+                    default="parameters.json", metavar="parameters.json")
 parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
                     default="trained_models/", metavar="MODEL_DIR")
 parser.add_argument("--render", help="Whether to render the environment to the display. Default=False",
@@ -57,7 +58,7 @@ if torch.cuda.is_available() and use_cuda:
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
 class DeepActorCriticAgent(mp.Process):
-    def __init__(self, id, env_name, agent_params):
+    def __init__(self, id, env_name, agent_params, env_params):
         """
         An Advantage Actor-Critic Agent that uses a Deep Neural Network to represent it's Policy and the Value function
         :param id: An integer ID to identify the agent in case there are multiple agent instances
@@ -69,6 +70,7 @@ class DeepActorCriticAgent(mp.Process):
         self.actor_name = "actor" + str(self.id)
         self.env_name = env_name
         self.params = agent_params
+        self.env_conf = env_params
         self.policy = self.multi_variate_gaussian_policy
         self.gamma = self.params['gamma']
         self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
@@ -113,6 +115,7 @@ class DeepActorCriticAgent(mp.Process):
         return self.action_distribution
 
     def preproc_obs(self, obs):
+        obs = np.array(obs)  # Obs could be lazy frames. So, force fetch before moving forward
         if len(obs.shape) == 3:
             #  Reshape obs from (H x W x C) order to this order: C x W x H and resize to (C x 84 x 84)
             obs = np.reshape(obs, (obs.shape[2], obs.shape[1], obs.shape[0]))
@@ -223,7 +226,26 @@ class DeepActorCriticAgent(mp.Process):
               " and an all time best reward of:", self.best_reward)
 
     def run(self):
-        self.env = gym.make(self.env_name)
+        # If a custom useful_region configuration for this environment ID is available, use it if not use the Default.
+        # Currently this is utilized for only the Atari env. Follows the same procedure as in Chapter 6
+        custom_region_available = False
+        for key, value in self.env_conf['useful_region'].items():
+            if key in args.env:
+                self.env_conf['useful_region'] = value
+                custom_region_available = True
+                break
+        if custom_region_available is not True:
+            self.env_conf['useful_region'] = self.env_conf['useful_region']['Default']
+        atari_env = False
+        for game in Atari.get_games_list():
+            if game in args.env.lower():
+                atari_env = True
+        if atari_env:  # Use the Atari wrappers (like we did in Chapter 6) if it's an Atari env
+            self.env = Atari.make_env(self.env_name, self.env_conf)
+        else:
+            #print("Given environment name is not an Atari Env. Creating a Gym env")
+            self.env = gym.make(self.env_name)
+
         self.state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space.sample(), int):  # Discrete action space
             self.action_shape = self.env.action_space.n
@@ -307,8 +329,11 @@ class DeepActorCriticAgent(mp.Process):
 if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
     agent_params["model_dir"] = args.model_dir
+    env_params = params_manager.get_env_params()  # Used with Atari environments
+    env_params["env_name"] = args.env
     mp.set_start_method('spawn')
 
-    agent_procs =[DeepActorCriticAgent(id, args.env, agent_params) for id in range(agent_params["num_agents"])]
+    agent_procs =[DeepActorCriticAgent(id, args.env, agent_params, env_params)
+                  for id in range(agent_params["num_agents"])]
     [p.start() for p in agent_procs]
     [p.join() for p in agent_procs]
