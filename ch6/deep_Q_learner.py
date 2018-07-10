@@ -6,6 +6,7 @@ import random
 import numpy as np
 
 import environment.atari as Atari
+import environment.utils as env_utils
 from utils.params_manager import ParamsManager
 from utils.decay_schedule import LinearDecaySchedule
 from utils.experience_memory import Experience, ExperienceMemory
@@ -90,6 +91,7 @@ class Deep_Q_Learner(object):
         observation = observation / 255.0  # Scale/Divide by max limit of obs' dtype. 255 for uint8
         if len(observation.shape) == 3: # Single image (not a batch)
             if observation.shape[2] < observation.shape[0]:  # Probably observation is in W x H x C format
+                # NOTE: This is just an additional check. The env wrappers are taking care of this conversion already
                 # Reshape to C x H x W format as per PyTorch's convention
                 observation = observation.reshape(observation.shape[2], observation.shape[1], observation.shape[0])
             observation = np.expand_dims(observation, 0)  # Create a batch dimension
@@ -200,7 +202,8 @@ if __name__ == "__main__":
         env = Atari.make_env(args.env_name, env_conf)
     else:
         print("Given environment name is not an Atari Env. Creating a Gym env")
-        env = gym.make(args.env_name)
+        # Resize the obs to w x h (84 x 84 by default) and then reshape it to be in the C x H x W format
+        env = env_utils.ResizeReshapeFrames(gym.make(args.env_name))
 
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
