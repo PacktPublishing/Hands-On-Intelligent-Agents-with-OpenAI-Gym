@@ -28,8 +28,8 @@ import environment.atari as Atari
 
 parser = ArgumentParser("deep_ac_agent")
 parser.add_argument("--env", help="Name of the Gym environment", default="Pendulum-v0", metavar="ENV_ID")
-parser.add_argument("--params-file", help="Path to the parameters file. Default= ./parameters.json",
-                    default="parameters.json", metavar="parameters.json")
+parser.add_argument("--params-file", help="Path to the parameters file. Default= ./async_a2c_parameters.json",
+                    default="async_a2c_parameters.json", metavar="async_a2c_parameters.json")
 parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
                     default="trained_models/", metavar="MODEL_DIR")
 parser.add_argument("--render", help="Whether to render the environment to the display. Default=False",
@@ -209,7 +209,7 @@ class DeepActorCriticAgent(mp.Process):
 
     def learn(self, n_th_observation, done):
         if self.params["clip_rewards"]:
-            self.rewards = list(np.clip(self.rewards))  # Clip rewards to -1 or 0 or +1
+            self.rewards = np.sign(self.rewards).tolist()  # Clip rewards to -1 or 0 or +1
         td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
         actor_loss, critic_loss = self.calculate_loss(self.trajectory, td_targets)
 
