@@ -184,6 +184,8 @@ class DeepActorCriticAgent(mp.Process):
         return actor_loss, critic_loss
 
     def learn(self, n_th_observation, done):
+        if self.params["clip_rewards"]:
+            self.rewards = list(np.clip(self.rewards))  # Clip rewards to -1 or 0 or +1
         td_targets = self.calculate_n_step_return(self.rewards, n_th_observation, done, self.gamma)
         actor_loss, critic_loss = self.calculate_loss(self.trajectory, td_targets)
 
