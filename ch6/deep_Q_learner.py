@@ -86,6 +86,7 @@ class Deep_Q_Learner(object):
         self.memory = ExperienceMemory(capacity=int(self.params['experience_memory_capacity']))  # Initialize an Experience memory with 1M capacity
 
     def get_action(self, observation):
+        observation = np.array(observation)  # Observations could be lazy frames. So force fetch before moving forward
         if len(observation.shape) == 3: # Single image (not a batch)
             if observation.shape[2] < observation.shape[0]:  # Probably observation is in W x H x C format
                 # Reshape to C x H x W format as per PyTorch's convention
@@ -225,7 +226,7 @@ if __name__ == "__main__":
         while not done:
             if env_conf['render'] or args.render:
                 env.render()
-            action = agent.get_action(np.array(obs) / 255.0)  # Scale/Divide by max limit of obs' dtype. 255 for uint8
+            action = agent.get_action(obs / 255.0)  # Scale/Divide by max limit of obs' dtype. 255 for uint8
             next_obs, reward, done, info = env.step(action)
             #agent.learn(obs, action, reward, next_obs, done)
             agent.memory.store(Experience(obs, action, reward, next_obs, done))
