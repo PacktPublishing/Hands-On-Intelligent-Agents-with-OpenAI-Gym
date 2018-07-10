@@ -331,7 +331,7 @@ if __name__ == "__main__":
     agent_params["model_dir"] = args.model_dir
     env_params = params_manager.get_env_params()  # Used with Atari environments
     env_params["env_name"] = args.env
-    mp.set_start_method('spawn')
+    mp.set_start_method('spawn')  # Prevents RuntimeError during cuda init
 
     agent_procs =[DeepActorCriticAgent(id, args.env, agent_params, env_params)
                   for id in range(agent_params["num_agents"])]
