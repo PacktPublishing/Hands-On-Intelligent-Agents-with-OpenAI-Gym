@@ -55,7 +55,7 @@ def process_frame_84(frame, conf):
     #frame *= (1.0 / 255.0)
     frame = cv2.resize(frame, (84, conf["dimension2"]))
     frame = cv2.resize(frame, (84, 84))
-    frame = np.reshape(frame, [-1, 84, 84])
+    frame = np.reshape(frame, [1, 84, 84])
     return frame
 
 
