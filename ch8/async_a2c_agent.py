@@ -264,7 +264,7 @@ class DeepActorCriticAgent(mp.Process):
             self.env_conf['useful_region'] = self.env_conf['useful_region']['Default']
         atari_env = False
         for game in Atari.get_games_list():
-            if game in args.env.lower():
+            if game.replace("_", "") in args.env.lower():
                 atari_env = True
         if atari_env:  # Use the Atari wrappers (like we did in Chapter 6) if it's an Atari env
             self.env = Atari.make_env(self.env_name, self.env_conf)

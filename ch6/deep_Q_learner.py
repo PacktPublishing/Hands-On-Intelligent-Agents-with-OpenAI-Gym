@@ -196,7 +196,7 @@ if __name__ == "__main__":
     print("Using env_conf:", env_conf)
     atari_env = False
     for game in Atari.get_games_list():
-        if game in args.env_name.lower():
+        if game.replace("_", "") in args.env_name.lower():
             atari_env = True
     if atari_env:
         env = Atari.make_env(args.env_name, env_conf)
