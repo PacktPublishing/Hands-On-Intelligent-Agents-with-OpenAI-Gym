@@ -13,6 +13,7 @@ except ImportError:
     pass
 from argparse import ArgumentParser
 from datetime import datetime
+import time
 from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
@@ -178,7 +179,8 @@ class DeepActorCriticAgent(mp.Process):
             #critic_loss.append(F.mse_loss(critic_pred, td_target))
         if self.params["use_entropy_bonus"]:
             actor_loss = torch.stack(actor_losses).mean() - self.action_distribution.entropy().mean()
-        actor_loss = torch.stack(actor_losses).mean()
+        else:
+            actor_loss = torch.stack(actor_losses).mean()
         critic_loss = torch.stack(critic_losses).mean()
 
         if self.actor_name == "global":
@@ -188,6 +190,10 @@ class DeepActorCriticAgent(mp.Process):
         return actor_loss, critic_loss
 
     def pull_params_from_global_agent(self):
+        # If this is the very beginning of the procs, the global agent may not have started yet.
+        # Wait for the global agent proc to start and make the shared state dict available
+        while "actor_state_dict" not in self.shared_state or "critic_state_dict" not in self.shared_state:
+            time.sleep(2)
         self.actor.load_state_dict(self.shared_state["actor_state_dict"])
         self.critic.load_state_dict(self.shared_state["critic_state_dict"])
         self.actor.to(device)
