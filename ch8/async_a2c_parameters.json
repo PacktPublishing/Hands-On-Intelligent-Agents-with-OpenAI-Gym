@@ -1,6 +1,6 @@
 {
   "agent":{
-    "num_agents": 1,
+    "num_agents": 8,
     "seed": 1,
     "summary_file_path_prefix": "./logs/",
     "use_cuda": true,
@@ -8,6 +8,7 @@
     "max_num_episodes": 50000,
     "gamma": 0.99,
     "learning_step_thresh": 10,
+    "clip_rewards": true,
     "load_trained_model": true,
     "save_freq_when_perf_improves": 10,
     "use_entropy_bonus": true

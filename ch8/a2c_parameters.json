@@ -1,0 +1,87 @@
+{
+  "agent":{
+    "num_agents": 1,
+    "seed": 1,
+    "summary_file_path_prefix": "./logs/",
+    "use_cuda": true,
+    "learning_rate": 1e-4,
+    "max_num_episodes": 50000,
+    "gamma": 0.99,
+    "learning_step_thresh": 10,
+    "clip_rewards": true,
+    "load_trained_model": true,
+    "save_freq_when_perf_improves": 10,
+    "use_entropy_bonus": true
+  },
+
+  "env": {
+    "type": "Atari",
+    "episodic_life": true,
+    "skip_rate": 1,
+    "num_frames_to_stack": 4,
+    "render": false,
+    "normalize_observation": false,
+    "useful_region": {
+        "Default":{
+                "crop1": 34,
+                "crop2": 34,
+                "dimension2": 80
+                },
+        "Asteroids": {
+                   "crop1": 16,
+                   "crop2": 34,
+                   "dimension2": 94
+                   },
+        "BeamRider": {
+                   "crop1": 20,
+                   "crop2": 20,
+                   "dimension2": 80
+                   },
+        "Breakout": {
+                  "crop1": 34,
+                  "crop2": 34,
+                  "dimension2": 80
+                  },
+        "Centipede": {
+          "crop1": 36,
+          "crop2": 56,
+          "dimension2": 90
+        },
+        "MsPacman": {
+          "crop1": 2,
+          "crop2": 10,
+          "dimension2": 84
+        },
+        "Pong": {
+          "crop1": 34,
+          "crop2": 34,
+          "dimension2": 80
+        },
+        "Seaquest": {
+          "crop1": 30,
+          "crop2": 30,
+          "dimension2": 80
+        },
+        "SpaceInvaders": {
+          "crop1": 8,
+          "crop2": 36,
+          "dimension2": 94
+        },
+        "VideoPinball": {
+          "crop1": 42,
+          "crop2": 60,
+          "dimension2": 89
+        },
+        "Qbert": {
+          "crop1": 12,
+          "crop2": 40,
+          "dimension2": 94
+        },
+        "Boxing": {
+          "crop1": 30,
+          "crop2": 30,
+          "dimension2": 80
+        }
+      }
+    }
+}
