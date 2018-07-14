@@ -135,7 +135,8 @@ class Deep_Q_Learner(object):
         done_batch = np.array(batch_xp.done)
 
         if self.params['use_target_network']:
-            if self.training_steps_completed % self.params['target_network_update_freq'] == 0:
+            #if self.training_steps_completed % self.params['target_network_update_freq'] == 0:
+            if self.step_num % self.params['target_network_update_freq'] == 0:
                 # The *update_freq is the Num steps after which target net is updated.
                 # A schedule can be used instead to vary the update freq.
                 self.Q_target.load_state_dict(self.Q.state_dict())
