@@ -76,8 +76,8 @@ class Deep_Q_Learner(object):
         # self.policy is the policy followed by the agent. This agents follows
         # an epsilon-greedy policy w.r.t it's Q estimate.
         self.policy = self.epsilon_greedy_Q
-        self.epsilon_max = 1.0
-        self.epsilon_min = 0.05
+        self.epsilon_max = params["epsilon_max"]
+        self.epsilon_min = params["epsilon_min"]
         self.epsilon_decay = LinearDecaySchedule(initial_value=self.epsilon_max,
                                     final_value=self.epsilon_min,
                                     max_steps= self.params['epsilon_decay_final_step'])
@@ -100,7 +100,7 @@ class Deep_Q_Learner(object):
         # Decay Epsilon/exploration as per schedule
         writer.add_scalar("DQL/epsilon", self.epsilon_decay(self.step_num), self.step_num)
         self.step_num +=1
-        if random.random() < self.epsilon_decay(self.step_num):
+        if random.random() < self.epsilon_decay(self.step_num) and not self.params["test"]:
             action = random.choice([i for i in range(self.action_shape)])
         else:
             action = np.argmax(self.Q(observation).data.to(torch.device('cpu')).numpy())
@@ -207,6 +207,7 @@ if __name__ == "__main__":
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
     agent_params = params_manager.get_agent_params()
+    agent_params["test"] = args.test
     agent = Deep_Q_Learner(observation_shape, action_shape, agent_params)
     
     episode_rewards = list()
