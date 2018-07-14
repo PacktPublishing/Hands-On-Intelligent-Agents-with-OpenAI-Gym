@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 args = ArgumentParser("deep_Q_learner")
 args.add_argument("--params-file", help="Path to the parameters json file. Default is parameters.json",
                   default="parameters.json", metavar="PFILE")
-args.add_argument("--env-name", help="ID of the Atari environment available in OpenAI Gym. Default is Seaquest-v0",
+args.add_argument("--env", help="ID of the Atari environment available in OpenAI Gym. Default is Seaquest-v0",
                   default="Seaquest-v0", metavar="ENV")
 args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0, type=int, metavar="GPU_ID")
 args.add_argument("--render", help="Render environment to Screen. Off by default", action="store_true", default=False)
@@ -30,7 +30,7 @@ args = args.parse_args()
 params_manager= ParamsManager(args.params_file)
 seed = params_manager.get_agent_params()['seed']
 summary_file_path_prefix = params_manager.get_agent_params()['summary_file_path_prefix']
-summary_file_path= summary_file_path_prefix + args.env_name + "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
+summary_file_path= summary_file_path_prefix + args.env+ "_" + datetime.now().strftime("%y-%m-%d-%H-%M")
 writer = SummaryWriter(summary_file_path)
 # Export the parameters as json files to the log directory to keep track of the parameters used in each experiment
 params_manager.export_env_params(summary_file_path + "/" + "env_params.json")
@@ -43,7 +43,6 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 if torch.cuda.is_available() and use_cuda:
     torch.cuda.manual_seed_all(seed)
-
 
 class Deep_Q_Learner(object):
     def __init__(self, state_shape, action_shape, params):
@@ -182,11 +181,11 @@ class Deep_Q_Learner(object):
 
 if __name__ == "__main__":
     env_conf = params_manager.get_env_params()
-    env_conf["env_name"] = args.env_name
+    env_conf["env_name"] = args.env
     # If a custom useful_region configuration for this environment ID is available, use it if not use the Default
     custom_region_available = False
     for key, value in env_conf['useful_region'].items():
-        if key in args.env_name:
+        if key in args.env:
             env_conf['useful_region'] = value
             custom_region_available = True
             break
@@ -196,14 +195,14 @@ if __name__ == "__main__":
     print("Using env_conf:", env_conf)
     atari_env = False
     for game in Atari.get_games_list():
-        if game.replace("_", "") in args.env_name.lower():
+        if game.replace("_", "") in args.env.lower():
             atari_env = True
     if atari_env:
-        env = Atari.make_env(args.env_name, env_conf)
+        env = Atari.make_env(args.env, env_conf)
     else:
         print("Given environment name is not an Atari Env. Creating a Gym env")
         # Resize the obs to w x h (84 x 84 by default) and then reshape it to be in the C x H x W format
-        env = env_utils.ResizeReshapeFrames(gym.make(args.env_name))
+        env = env_utils.ResizeReshapeFrames(gym.make(args.env))
 
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
