@@ -25,6 +25,10 @@ args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0,
 args.add_argument("--render", help="Render environment to Screen. Off by default", action="store_true", default=False)
 args.add_argument("--test", help="Test mode. Used for playing without learning. Off by default", action="store_true",
                   default=False)
+args.add_argument("--record", help="Enable recording (video & stats) of the agent's performance",
+                  action="store_true", default=False)
+args.add_argument("--recording-output-dir", help="Directory to store monitor outputs. Default=./trained_models/results",
+                  default="./trained_models/results")
 args = args.parse_args()
 
 params_manager= ParamsManager(args.params_file)
@@ -203,6 +207,9 @@ if __name__ == "__main__":
         print("Given environment name is not an Atari Env. Creating a Gym env")
         # Resize the obs to w x h (84 x 84 by default) and then reshape it to be in the C x H x W format
         env = env_utils.ResizeReshapeFrames(gym.make(args.env))
+
+    if args.record:  # If monitor is enabled, record stats and video of agent's performance
+        env = gym.wrappers.Monitor(env, args.recording_output_dir, force=True)
 
     observation_shape = env.observation_space.shape
     action_shape = env.action_space.n
