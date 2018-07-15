@@ -190,6 +190,15 @@ class Deep_Q_Learner(object):
 if __name__ == "__main__":
     env_conf = params_manager.get_env_params()
     env_conf["env_name"] = args.env
+    # In test mode, let the end of the game be the end of episode rather than ending episode at the end of every life.
+    # This helps to report out the (mean and max) episode rewards per game (rather than per life!)
+    if args.test:
+        env_conf["episodic_life"] = False
+    # Specify the reward calculation type used for printing stats at the end of every episode.
+    # If "episode_life" is true, the printed stats (reward, mean reward, max reward) are per life. If "episodic_life"
+    # is false, the printed stats/scores are per game in Atari environments
+    rew_type = "LIFE" if env_conf["episodic_life"] else "GAME"
+
     # If a custom useful_region configuration for this environment ID is available, use it if not use the Default
     custom_region_available = False
     for key, value in env_conf['useful_region'].items():
@@ -265,8 +274,8 @@ if __name__ == "__main__":
                     agent.best_mean_reward = np.mean(episode_rewards)
                     agent.save(env_conf['env_name'])
                     num_improved_episodes_before_checkpoint = 0
-                print("\nEpisode#{} ended in {} steps. reward ={} ; mean_reward={:.3f} best_reward={}".
-                      format(episode, step+1, cum_reward, np.mean(episode_rewards), agent.best_reward))
+                print("\nEpisode#{} ended in {} steps. Per {} stats: reward ={} ; mean_reward={:.3f} best_reward={}".
+                      format(episode, step+1, rew_type, cum_reward, np.mean(episode_rewards), agent.best_reward))
                 writer.add_scalar("main/ep_reward", cum_reward, global_step_num)
                 writer.add_scalar("main/mean_ep_reward", np.mean(episode_rewards), global_step_num)
                 writer.add_scalar("main/max_ep_rew", agent.best_reward, global_step_num)
