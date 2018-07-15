@@ -10,6 +10,7 @@ import environment.utils as env_utils
 from utils.params_manager import ParamsManager
 from utils.decay_schedule import LinearDecaySchedule
 from utils.experience_memory import Experience, ExperienceMemory
+import utils.weights_initializer
 from function_approximator.perceptron import SLP
 from function_approximator.cnn import CNN
 from tensorboardX import SummaryWriter
@@ -74,6 +75,8 @@ class Deep_Q_Learner(object):
             self.DQN = CNN
 
         self.Q = self.DQN(state_shape, action_shape, device).to(device)
+        self.Q.apply(utils.weights_initializer.xavier)
+
         self.Q_optimizer = torch.optim.Adam(self.Q.parameters(), lr=self.learning_rate)
         if self.params['use_target_network']:
             self.Q_target = self.DQN(state_shape, action_shape, device).to(device)
