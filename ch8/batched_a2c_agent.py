@@ -138,7 +138,9 @@ class DeepActorCriticAgent():
         actions = action_distributions.sample()
         log_prob_a = action_distributions.log_prob(actions)
         actions = self.process_action(actions)
-        self.trajectory.append(Transition(obs, value, actions, log_prob_a))  # Construct the trajectory
+        # Store the n-step trajectory for learning. Skip storing the trajectory in test only mode
+        if not self.params["test"]:
+            self.trajectory.append(Transition(obs, value, actions, log_prob_a))  # Construct the trajectory
         return actions
     # TODO: rename num_agents to num_actors in parameters.json file to be consistent with comments
     def calculate_n_step_return(self, n_step_rewards, next_states, dones, gamma):
@@ -304,7 +306,7 @@ class DeepActorCriticAgent():
 
             step_num += self.params["num_agents"]
             episode += done_env_idxs.size  # Update the number of finished episodes
-            if not args.test and(step_num >= self.params["learning_step_thresh"] or done_env_idxs.size):
+            if not args.test and (step_num >= self.params["learning_step_thresh"] or done_env_idxs.size):
                 self.learn(next_obs, dones)
                 step_num = 0
                 # Monitor performance and save Agent's state when perf improves
@@ -338,6 +340,7 @@ class DeepActorCriticAgent():
 if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
     agent_params["model_dir"] = args.model_dir
+    agent_params["test"] = args.test
     mp.set_start_method('spawn')
 
     env_names = [args.env] * agent_params["num_agents"]

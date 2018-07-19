@@ -143,7 +143,9 @@ class DeepActorCriticAgent(mp.Process):
         action = action_distribution.sample()
         log_prob_a = action_distribution.log_prob(action)
         action = self.process_action(action)
-        self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
+        # Store the n-step trajectory for learning. Skip storing the trajectories in test only mode
+        if not self.params["test"]:
+            self.trajectory.append(Transition(obs, value, action, log_prob_a))  # Construct the trajectory
         return action
 
     def calculate_n_step_return(self, n_step_rewards, final_state, done, gamma):
@@ -333,7 +335,7 @@ class DeepActorCriticAgent(mp.Process):
                 self.rewards.append(reward)
                 ep_reward += reward
                 step_num +=1
-                if not args.test and(step_num >= self.params["learning_step_thresh"] or done):
+                if not args.test and (step_num >= self.params["learning_step_thresh"] or done):
                     self.learn(next_obs, done)
                     step_num = 0
                     # Async send updates to the global shared parameters
@@ -369,6 +371,7 @@ class DeepActorCriticAgent(mp.Process):
 if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
     agent_params["model_dir"] = args.model_dir
+    agent_params["test"] = args.test
     env_params = params_manager.get_env_params()  # Used with Atari environments
     env_params["env_name"] = args.env
     mp.set_start_method('spawn')  # Prevents RuntimeError during cuda init
