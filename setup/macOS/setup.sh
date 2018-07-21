@@ -155,7 +155,7 @@ pip install 'gym[all]'
 
 echo; echo "[PART 3] Success!"
 echo; echo "**** HOIAWOG SETUP SCRIPT ****"
-echo "[PART 4] Download and run an example agent"
+echo "[PART 4] Run an example agent"
 echo "*********************************"; sleep 1; echo
 
 sleep 1
