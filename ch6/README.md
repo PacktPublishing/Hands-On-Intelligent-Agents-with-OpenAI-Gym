@@ -1,8 +1,8 @@
 # Chapter 6: Implementing an Intelligent Agent for Optimal Control using Deep Q Learning
 
 1. [Brief chapter summary and outline of topics covered]()
-2. [Code structure]([#code-structure])
-3. [Running the code](#running-the-code)
+2. [Code structure](#2-code-structure)
+3. [Running the code](#3-running-the-code)
    - [Training](#training)
    - [Testing](#testing)
 

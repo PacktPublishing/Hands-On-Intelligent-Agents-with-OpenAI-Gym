@@ -6,9 +6,9 @@ To setup the necessary packages to run the code samples for the chapters effortl
 
 Follow the setup instructions based on your OS:
 
-- [Mac-OSX](#one-click-setup-for-mac-osx-using-a-bash-script)
+- [Mac-OSX](#mac-osx-one-click-setup-for-mac-osx-using-a-bash-script)
 
-- [Ubuntu](#quick-setup-for-ubuntu)
+- [Ubuntu](#ubuntu-quick-setup-for-ubuntu)
 
   
 
