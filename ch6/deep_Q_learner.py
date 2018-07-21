@@ -20,8 +20,8 @@ from argparse import ArgumentParser
 args = ArgumentParser("deep_Q_learner")
 args.add_argument("--params-file", help="Path to the parameters json file. Default is parameters.json",
                   default="parameters.json", metavar="PFILE")
-args.add_argument("--env", help="ID of the Atari environment available in OpenAI Gym. Default is Seaquest-v0",
-                  default="Seaquest-v0", metavar="ENV")
+args.add_argument("--env", help="ID of the Atari environment available in OpenAI Gym.Default is SeaquestNoFrameskip-v4",
+                  default="SeaquestNoFrameskip-v4", metavar="ENV")
 args.add_argument("--gpu-id", help="GPU device ID to use. Default=0", default=0, type=int, metavar="GPU_ID")
 args.add_argument("--render", help="Render environment to Screen. Off by default", action="store_true", default=False)
 args.add_argument("--test", help="Test mode. Used for playing without learning. Off by default", action="store_true",
