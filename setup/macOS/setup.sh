@@ -1,4 +1,5 @@
 #!/bin/sh
+# @author: Praveen Palanisamy (@praveen-palanisamy on GitHub)
 set -e
 
 command_exists () {
@@ -40,11 +41,11 @@ echo "      ▀▀█▓▓█▀▀    ▓▌▀████▀    ▀▀█▓
 echo "                  ▓▌                                                     "
 echo "                  ▓▌                                                     "
 tput sgr0
-echo; echo "Setting up Gym & dependencies. Takes 5-15 minutes, based on internet speed."
+echo; echo "Setting up dependencies for HOIAWOG. Takes 5-15 minutes, based on internet speed."
 
 read -rsp $'>> Press enter to begin <<\n'
 
-echo; echo "**** OPENAI GYM SETUP SCRIPT ****"
+echo; echo "**** HOIAWOG SETUP SCRIPT ****"
 echo "[PART 1] Setup Homebrew & system dependencies"
 echo "*********************************"; sleep 1; echo
 echo "Reaching out to Homebrew..."
@@ -83,7 +84,7 @@ fi
 safe_brew_install cmake swig boost boost-python sdl2 wget
 
 echo; echo "[PART 1] Success!"
-echo; echo "**** OPENAI GYM SETUP SCRIPT ****"
+echo; echo "**** HOIAWOG SETUP SCRIPT ****"
 echo "[PART 2] Setup Python 3.5 / Conda"
 tput smul
 echo "[TIP] Say 'yes' to each prompt that asks"
@@ -106,11 +107,11 @@ if command_exists conda ; then
         echo "Switching to Python 3.5 using Conda..."
         
         set +e
-        conda create -n p35 python=3.5
+        conda env create -f ../../conda_env.yaml -n rl_gym_book python=3.5
         set -e
-        source activate p35
+        source activate rl_gym_book
         tput smul
-        echo "[TIP] New terminal tabs/windows must run 'source activate p35' for Gym"
+        echo "[TIP] New terminal tabs/windows must run 'source activate rl_gym_book' for Gym"
         echo "[TIP] Add the above command to your .bash_profile for auto-activation"
         tput rmul
         read -rsp $'>> Press enter to continue <<\n'
@@ -124,18 +125,26 @@ else
     wget -c -nc https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
     chmod +x Miniconda3-latest-MacOSX-x86_64.sh
     ./Miniconda3-latest-MacOSX-x86_64.sh
-    # Dying around here for some reason, suddenly. Is it -nc flag? Or...?
     echo "Finished installing Miniconda"
     rm Miniconda3-latest-MacOSX-x86_64.sh
     source ~/.bash_profile
     tput smul
     echo "[TIP] For Conda to work, type 'source ~/.bash_profile' after the script completes."
     tput rmul
+    read -rsp $'>> Press enter to continue <<\n'set +e
+    conda env create -f ../../conda_env.yaml -n rl_gym_book python=3.5
+    echo "Setting up a new conda env with all the necessary packages..."
+    set -e
+    source activate rl_gym_book
+    tput smul
+    echo "[TIP] New terminal tabs/windows must run 'source activate rl_gym_book' for Gym"
+    echo "[TIP] Add the above command to your .bash_profile for auto-activation"
+    tput rmul
     read -rsp $'>> Press enter to continue <<\n'
 fi
 
 echo; echo "[PART 2] Success!"
-echo; echo "**** OPENAI GYM SETUP SCRIPT ****"
+echo; echo "**** HOIAWOG SETUP SCRIPT ****"
 echo "[PART 3] Install OpenAI Gym"
 tput smul
 echo "[TIP] The pachi-py step takes awhile."
@@ -145,19 +154,11 @@ echo "*********************************"; sleep 1; echo
 pip install 'gym[all]'
 
 echo; echo "[PART 3] Success!"
-echo; echo "**** OPENAI GYM SETUP SCRIPT ****"
+echo; echo "**** HOIAWOG SETUP SCRIPT ****"
 echo "[PART 4] Download and run an example agent"
 echo "*********************************"; sleep 1; echo
 
 sleep 1
-dir="GymAgents"
-if [ "${PWD##*/}" != $dir ]; then 
-     if [ ! -d $dir ]; then
-          mkdir $dir
-     fi
-     cd "$dir"
-fi
-
 
 python setup_test.py
 
@@ -174,15 +175,13 @@ echo "  ███████║ ╚██████╔╝ ╚█████�
 echo "  ╚══════╝  ╚═════╝   ╚═════╝  ╚═════╝ ╚══════╝ ╚══════╝ ╚══════╝    ╚═╝"
 tput sgr0
 echo
-echo "OpenAI Gym setup complete."
-echo "Use 'import gym' to use Gym in python files"
+echo " HOIAWOG setup complete."
 echo
 echo "To rerun the example agent, enter these commands in terminal:"
 echo "    source ~/.bash_profile"
-echo "    source activate p35"
-echo "    cd ${dir}"
-echo "    python example_agent.py"
+echo "    source activate rl_gym_book"
+echo "    python setup_test.py"
 echo
-echo "For next steps, check out the Gym docs"
-echo "https://gym.openai.com/docs"
+echo "For next steps, check out the README file at "
+echo "https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym"
 echo
