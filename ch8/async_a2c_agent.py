@@ -378,8 +378,13 @@ if __name__ == "__main__":
 
     manager = mp.Manager()
     shared_state = manager.dict()
+    if not args.test:
+        agent_procs =[DeepActorCriticAgent(id, args.env, agent_params, shared_state, env_params)
+                      for id in range(agent_params["num_agents"])]
+        [p.start() for p in agent_procs]
+        [p.join() for p in agent_procs]
+    else:
+        test_agent_proc = DeepActorCriticAgent(0, args.env, agent_params, shared_state, env_params)
+        test_agent_proc.start()
+        test_agent_proc.join()
 
-    agent_procs =[DeepActorCriticAgent(id, args.env, agent_params, shared_state, env_params)
-                  for id in range(agent_params["num_agents"])]
-    [p.start() for p in agent_procs]
-    [p.join() for p in agent_procs]
