@@ -1,19 +1,13 @@
-### Deep Actor-Critic Agent
-Contains an easy-to-follow, simple-to-use Actor-Critic architecture based reinforcement learning agent implementations that uses a deep neural
-network to represent the policy and value function. Following are the agent algorithms discussed and implemented in this chapter:
-  - Deep n-step Advantage Actor Critic Agent
-  - Asynchronous Deep n-step Advantage Actor Critic Agent
-  - Batched Deep n-step Advantaged Actor Critic Agent
+# Chapter 8: Implementing an Intelligent & Autonomous Car Driving Agent using Deep Actor-Critic Algorithm
 
-### Code Structure
-[To be updated]
+1. [Brief chapter summary and outline of topics covered]()
+2. [Code Structure](#2-code-structure)
+3. [Running the code](#3-running-the-code)
+   * [Deep n-step Advantage Actor-Critic](#deep-n-step-advantage-actor-critic-agent)
+       - [Training](#a2c-training)
+       - [Testing](#a2c-testing)
+   * [Asynchronous Deep n-step Advantage Actor-Critic](#asynchronous-deep-n-step-advantage-actor-critic-agent)
+       - [Training](#async-a2c-training)
+       - [Testing](#async-a2c-testing)
 
-### Pre-trained Agent brains
-Trained agents brains/models and instructions to test them can be found in the [trained_models](trained_models) directory.
-
-#### (optional) Requirements:
-If you use the`CarRacing` environment to train or test the agent, you will need the following additional 
-python packages:
-  - Python 3.5 (because Box2D from the author's official anaconda channel (kne) has binaries built only for py upto 3.5)
-  - Box2D. Can be installed using: 
-  `conda install -c kne pybox2d`
+## 2. Code structure
