@@ -1,10 +1,10 @@
-# Hands-on Intelligent Agents with OpenAI Gym | HOIAWOG
+# Hands-on Intelligent Agents with OpenAI Gym (HOIAWOG)
 
 The Book          |  Examples of agents you will learn to develop
 :-------------------------:|:-------------------------:
 [![](https://d255esdrn735hr.cloudfront.net/sites/default/files/imagecache/ppv4_main_book_cover/B09513.png)](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) [ Topics Covered](https://praveenp.com/hands-on-intelligent-agents-with-openai-gym-hoiawog/)|  [![](https://praveenp.com/projects/HOIAWOG/output.gif)](https://praveenp.com/hands-on-intelligent-agents-with-openai-gym-hoiawog/)
 
-**HOIAWOG!** This is the code repository for the [Hands-On Intelligent Agents with OpenAI Gym](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) book.
+**HOIAWOG!: Your guide to developing AI agents using deep reinforcement learning**. Implement intelligent agents using PyTorch to solve classic AI problems, play console games like Atari, and perform tasks such as autonomous driving using the CARLA driving simulator.
 
 - Chapter 1: Introduction to Intelligent Agents and Learning Environments :space_invader:
 - Chapter 2: Reinforcement Learning and Deep Reinforcement Learning 
