@@ -10,6 +10,11 @@
        - [Training](#async-a2c-training)
        - [Testing](#async-a2c-testing)
 
+[![HOIAWOG A3C Carla 9](https://praveenp.com/projects/HOIAWOG/ch8_training_9async_carla.gif)](https://praveenp.com/blog/#hands-on-intelligent-agents-with-openai-gym-hoiawog)
+
+A sample screencapture showing 9 agents training asynchronously launched using the [async_a2c.py](async_a2c.py) script with `num_agents` parameter in [async_a2c_parameters.json](async_a2c_parameters.json) set to `9`. (Refer to [Async A2C Training section](#async-a2c-training) for the command used to launch the training)
+
+
 ## 1. Brief chapter summary and outline of topics covered
 This chapter teaches you the fundamentals of the Policy Gradient based reinforcement learning algorithms and helps you intuitively understand the deep n-step advantage actor-critic algorithm. You will then learn to implement a super-intelligent agent that can drive a car autonomously in the Carla simulator using both the synchronous as well as asynchronous implementation of the deep n-step advantage actor-critic algorithm.
 
@@ -150,6 +155,8 @@ Following is a higher-level outline of the topics covered in this chapter:
     the code as per the instructions to `~/HOIAWOG/`,  you can launch the Agent training script from the `~/HOIAWOG/ch8` directory using the following command:
     
     `python async_a2c_agent.py --env Carla-v0 --gpu-id 0` 
+    
+    The screencapture animation (GIF) at the top of this page was captured by launching the above command with `num_agents` in [async_a2c_parameters.json](./async_a2c_parameters.json) set to `9`.
     
     If a saved agent "brain" (trained model) is available for the chosen environment, the training script will upload 
     that brain to the agent and continue training the agent to improve further.
