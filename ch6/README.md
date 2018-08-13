@@ -1,13 +1,27 @@
 # Chapter 6: Implementing an Intelligent Agent for Optimal Control using Deep Q Learning
 
-1. [Brief chapter summary and outline of topics covered]()
+1. [Brief chapter summary and outline of topics covered](#1-brief-chapter-summary-and-outliine-of-topics-covered)
 2. [Code structure](#2-code-structure)
 3. [Running the code](#3-running-the-code)
    - [Training](#training)
    - [Testing](#testing)
 
-## 2. Code structure
+## 1. Brief chapter summary and outline of topics covered
+Chapter 6 covers various methods to improve Q-learning including action-value function approximation using deep neural network, experience replay, target networks and also the necessary utilities and building-blocks that are useful for training and testing deep reinforcement learning agents in general. You will implement a DQN based intelligent agent for taking optimal discrete control actions and train it to play several Atari games and watch the agent's performance.
 
+The following is an outline of the higher-level topics covered in this chapter:
+* Various methods to improve the Q-learning agent, including the following:
+    * Neural network approximation of action-value functions
+    * Experience replay
+    * Exploration schedules
+* Implementing deep convolutional neural networks using PyTorch for action-value function approximation
+* Stabilizing deep Q-networks using target networks
+* Logging and monitoring learning performance of PyTorch agents using TensorBoard
+* Managing parameters and configurations
+* Atari Gym environment
+* Training deep Q-learners to play Atari games
+
+## 2. Code structure
        
 * [deep_Q_learner.py](./deep_Q_learner.py)  ──> Main script to launch the Deep Q Learning agent
  * [environment](./environment)  ──> Module containing environment wrappers and utility functions
