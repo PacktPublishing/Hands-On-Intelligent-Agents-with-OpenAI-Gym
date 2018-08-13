@@ -12,6 +12,7 @@ Chapter 6 covers various methods to improve Q-learning including action-value fu
 The following is an outline of the higher-level topics covered in this chapter:
 * Various methods to improve the Q-learning agent, including the following:
     * Neural network approximation of action-value functions
+    * Double DQN
     * Experience replay
     * Exploration schedules
 * Implementing deep convolutional neural networks using PyTorch for action-value function approximation
@@ -47,7 +48,7 @@ The [deep_Q_learner.py](./deep_Q_learner.py) is the main script that takes care 
 
 | Argument                 | Description                                                  |
 | ------------------------ | ------------------------------------------------------------ |
-| `--params-file`          |                                                              |
+| `--params-file`          | Path to the JSON parameters file. Default=`parameters.json`  |
 | `--env`                  | Name/ID of the Atari environment available in OpenAI Gym. Default=`SeaquestNoFrameskip-v4` |
 | `--gpu-id`               | ID of the GPU device to be used. Default=`0`                 |
 | `--render`               | Render the environment to screen. Off by default             |
@@ -74,3 +75,7 @@ The [deep_Q_learner.py](./deep_Q_learner.py) is the main script that takes care 
 - ### Testing
 
   `python deep_Q_learner.py --env RiverraidNoFrameskip-v4 --test --render  --record`
+  
+  The above command should launch the Deep Q Learning Agent in test mode and render the environment states while also recording the performances. You can find the stats and the recording in the [trained_models/results](trained_models/results) directory after the script finishes running. Sample output for the agent trained on `RiverraidNoFrameskip-v4` for a few thousand episode is shown below:
+  
+  ![HOIAWOG riverraid atari game sample result](trained_models/results/RiverraidNoFrameskip-v4.gif)
