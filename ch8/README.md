@@ -1,6 +1,6 @@
 # Chapter 8: Implementing an Intelligent & Autonomous Car Driving Agent using Deep Actor-Critic Algorithm
 
-1. [Brief chapter summary and outline of topics covered]()
+1. [Brief chapter summary and outline of topics covered](1-brief-chapter-summary-and-outline-of-topics-covered)
 2. [Code Structure](#2-code-structure)
 3. [Running the code](#3-running-the-code)
    * [Deep n-step Advantage Actor-Critic](#deep-n-step-advantage-actor-critic-agent)
@@ -9,6 +9,24 @@
    * [Asynchronous Deep n-step Advantage Actor-Critic](#asynchronous-deep-n-step-advantage-actor-critic-agent)
        - [Training](#async-a2c-training)
        - [Testing](#async-a2c-testing)
+
+## 1. Brief chapter summary and outline of topics covered
+This chapter teaches you the fundamentals of the Policy Gradient based reinforcement learning algorithms and helps you intuitively understand the deep n-step advantage actor-critic algorithm. You will then learn to implement a super-intelligent agent that can drive a car autonomously in the Carla simulator using both the synchronous as well as asynchronous implementation of the deep n-step advantage actor-critic algorithm.
+
+Following is a higher-level outline of the topics covered in this chapter:
+
+* Deep n-step Advantage Actor-Critic algorithm
+  * Policy Gradients
+    * The likelyhood ratio trick
+    * The policy gradient theorem
+  * Actor-Critic algorithms
+  * Advantage Actor-Critic algorithm
+  * n-step Advantage Actor-Critic algorithm
+    * n-step returns
+    * Implementing the n-step return calculation
+* Implementing deep n-step Advantage Actor-Critic algorithm
+* Training an intelligent and autonomous driving agent
+  * Training the agent to drive a car in the CARLA driving simulator
 
 ## 2. Code structure
 
