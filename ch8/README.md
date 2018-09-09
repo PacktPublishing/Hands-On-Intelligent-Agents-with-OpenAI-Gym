@@ -1,6 +1,6 @@
 # Chapter 8: Implementing an Intelligent & Autonomous Car Driving Agent using Deep Actor-Critic Algorithm
 
-1. [Brief chapter summary and outline of topics covered](1-brief-chapter-summary-and-outline-of-topics-covered)
+1. [Brief chapter summary and outline of topics covered](#1-brief-chapter-summary-and-outline-of-topics-covered)
 2. [Code Structure](#2-code-structure)
 3. [Running the code](#3-running-the-code)
    * [Deep n-step Advantage Actor-Critic](#deep-n-step-advantage-actor-critic-agent)
@@ -12,7 +12,7 @@
 
 [![HOIAWOG A3C Carla 9](https://praveenp.com/projects/HOIAWOG/ch8_training_9async_carla.gif)](https://praveenp.com/blog/#hands-on-intelligent-agents-with-openai-gym-hoiawog)
 
-A sample screencapture showing 9 agents training asynchronously launched using the [async_a2c.py](async_a2c.py) script with `num_agents` parameter in [async_a2c_parameters.json](async_a2c_parameters.json) set to `9`. (Refer to [Async A2C Training section](#async-a2c-training) for the command used to launch the training)
+A sample screencapture showing 9 agents training asynchronously launched using the [async_a2c_agent.py](async_a2c_agent.py) script with `num_agents` parameter in [async_a2c_parameters.json](async_a2c_parameters.json) set to `9`. (Refer to [Async A2C Training section](#async-a2c-training) for the command used to launch the training)
 
 
 ## 1. Brief chapter summary and outline of topics covered
