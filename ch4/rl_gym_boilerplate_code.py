@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# Boilerplate code for Reinforcement Learning with Gym | Praveen Palanisamy
+# Chapter 4, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
 import gym
 env = gym.make("Qbert-v0")
 MAX_NUM_EPISODES = 10

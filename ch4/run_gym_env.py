@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Handy script for exploring the available Gym environments | Praveen Palanisamy
+# Chapter 4, Hands-on Intelligent Agents with OpenAI Gym, 2018
 
 import gym
 import sys

@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+# Handy script for exploring Gym environment's spaces | Praveen Palanisamy
+# Chapter 4, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
+import sys
 import gym
 from gym.spaces import *
-import sys
 
 def print_spaces(space):
     print(space)
