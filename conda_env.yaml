@@ -25,8 +25,8 @@ dependencies:
   - nccl=1.3.4=cuda8.0_1
   - ncurses=6.0=h9df7e31_2
   - ninja=1.8.2=h6bb024c_1
-  - numpy=1.14.3=py35hcd700cb_2
-  - numpy-base=1.14.3=py35hdbf6ddf_2
+  - numpy=1.14.3
+  - numpy-base=1.14.3
   - olefile=0.45.1=py35_0
   - openssl=1.0.2o=h20670df_0
   - pillow=5.1.0=py35h3deb7b8_0
@@ -63,7 +63,6 @@ dependencies:
     - pyglet==1.3.2
     - pyopengl==3.1.0
     - requests==2.19.0
-    - roboschool==1.0
     - tensorboard==1.8.0
     - tensorboardx==1.2
     - tensorflow==1.8.0
