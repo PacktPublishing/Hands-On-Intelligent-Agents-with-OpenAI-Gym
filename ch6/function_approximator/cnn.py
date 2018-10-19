@@ -1,3 +1,5 @@
+# CNN implemented using PyTorch for Q function approximation | Praveen Palanisamy
+# Chapter 6, Hands-on Intelligent Agents with OpenAI Gym, 2018
 import torch
 
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env/ python
+# Script to run a random-acting agent in Roboschool environments
+# Chapter 9, Hands-on Intelligent Agents with OpenAI Gym | Praveen Palanisamy
+
+from argparse import ArgumentParser
 from OpenGL import GLU  # Temporary fix for roboschool issue #8
 import roboschool
 import gym
-from argparse import ArgumentParser
 
 argparser = ArgumentParser()
 argparser.add_argument("--env",

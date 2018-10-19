@@ -1,4 +1,6 @@
 #!/bin/bash
+# Script to generate clips of agents acting in Roboschool environments
+# Chapter 9, Hands-on Intelligent Agents with OpenAI Gym | Praveen Palanisamy
 : '
 #1. List of all env names
 env_list="RoboschoolInvertedPendulum-v1,RoboschoolInvertedPendulumSwingup-v1,RoboschoolInvertedDoublePendulum-v1,RoboschoolReacher-v1,RoboschoolHopper-v1,RoboschoolWalker2d-v1,RoboschoolHalfCheetah-v1,RoboschoolAnt-v1,RoboschoolHumanoid-v1,RoboschoolHumanoidFlagrun-v1,RoboschoolHumanoidFlagrunHarder-v1,RoboschoolPong-v1"

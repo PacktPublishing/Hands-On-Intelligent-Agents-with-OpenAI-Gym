@@ -1,5 +1,9 @@
 #!/usr/bin/env python
+# Deep Q-learning agent implemented using PyTorch | Praveen Palanisamy
+# Chapter 6, Hands-on Intelligent Agents with OpenAI Gym, 2018
 
+from datetime import datetime
+from argparse import ArgumentParser
 import gym
 import torch
 import random
@@ -14,8 +18,6 @@ import utils.weights_initializer
 from function_approximator.perceptron import SLP
 from function_approximator.cnn import CNN
 from tensorboardX import SummaryWriter
-from datetime import datetime
-from argparse import ArgumentParser
 
 args = ArgumentParser("deep_Q_learner")
 args.add_argument("--params-file", help="Path to the parameters json file. Default is parameters.json",
@@ -48,6 +50,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 if torch.cuda.is_available() and use_cuda:
     torch.cuda.manual_seed_all(seed)
+
 
 class Deep_Q_Learner(object):
     def __init__(self, state_shape, action_shape, params):

@@ -2,9 +2,8 @@
 """
 q_learner.py
 An easy-to-follow script to train, test and evaluate a Q-learning agent on the Mountain Car
-problem using the OpenAI Gym.
-This is part of the Book on "Getting started with OpenAI Gym"
-Author: Praveen Palanisamy
+problem using the OpenAI Gym. |Praveen Palanisamy
+# Chapter 5, Hands-on Intelligent Agents with OpenAI Gym, 2018
 """
 import gym
 import numpy as np
