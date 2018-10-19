@@ -1,3 +1,6 @@
+# Actor-Critic neural networks implemented in PyTorch | Praveen Palanisamy
+# Chapter 8, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
 import torch
 
 

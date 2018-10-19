@@ -2,6 +2,7 @@
 OpenAI Gym compatible Driving simulation environment based on Carla.
 Requires the system environment variable CARLA_SERVER to be defined and be pointing to the
 CarlaUE4.sh file on your system. The default path is assumed to be at: ~/software/CARLA_0.8.2/CarlaUE4.sh
+Chapter 7, Hands-on Intelligent Agents with OpenAI Gym, 2018| Praveen Palanisamy
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -77,6 +78,7 @@ ENV_CONFIG = {
     "use_depth_camera": False,
     "early_terminate_on_collision": True,
     "verbose": False,
+    "render" : True,  # Render to display if true
     "render_x_res": 800,
     "render_y_res": 600,
     "x_res": 80,
@@ -169,12 +171,20 @@ class CarlaEnv(gym.Env):
         print("Initializing new Carla server...")
         # Create a new server process and start the client.
         self.server_port = random.randint(10000, 60000)
-        self.server_process = subprocess.Popen(
-            [SERVER_BINARY, self.config["server_map"],
-             "-windowed", "-ResX=400", "-ResY=300",
-             "-carla-server",
-             "-carla-world-port={}".format(self.server_port)],
-            preexec_fn=os.setsid, stdout=open(os.devnull, "w"))
+        if self.config["render"]:
+            self.server_process = subprocess.Popen(
+                [SERVER_BINARY, self.config["server_map"],
+                 "-windowed", "-ResX=400", "-ResY=300",
+                 "-carla-server",
+                 "-carla-world-port={}".format(self.server_port)],
+                preexec_fn=os.setsid, stdout=open(os.devnull, "w"))
+        else:
+            self.server_process = subprocess.Popen(
+                ("SDL_VIDEODRIVER=offscreen SDL_HINT_CUDA_DEVICE={} {} " +
+                 self.config["server_map"] + " -windowed -ResX=400 -ResY=300"
+                 " -carla-server -carla-world-port={}").format(0, SERVER_BINARY, self.server_port),
+                shell=True, preexec_fn=os.setsid, stdout=open(os.devnull, "w"))
+
         live_carla_processes.add(os.getpgid(self.server_process.pid))
 
         for i in range(RETRIES_ON_ERROR):

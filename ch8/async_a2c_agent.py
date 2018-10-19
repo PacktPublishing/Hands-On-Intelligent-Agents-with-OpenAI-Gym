@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+# n-step Asynchronous Advantage Actor-Critic Agent (A3C) | Praveen Palanisamy
+# Chapter 8, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
+from argparse import ArgumentParser
+from datetime import datetime
+import time
+from collections import namedtuple
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -11,10 +18,6 @@ try:
     import roboschool
 except ImportError:
     pass
-from argparse import ArgumentParser
-from datetime import datetime
-import time
-from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 from function_approximator.shallow import Actor as ShallowActor
@@ -30,10 +33,10 @@ parser = ArgumentParser("deep_ac_agent")
 parser.add_argument("--env", help="Name of the Gym environment", default="Pendulum-v0", metavar="ENV_ID")
 parser.add_argument("--params-file", help="Path to the parameters file. Default= ./async_a2c_parameters.json",
                     default="async_a2c_parameters.json", metavar="async_a2c_parameters.json")
-parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
-                    default="trained_models/", metavar="MODEL_DIR")
-parser.add_argument("--render", help="Whether to render the environment to the display. Default=False",
-                    action='store_true', default=False)
+parser.add_argument("--model-dir", default="trained_models/", metavar="MODEL_DIR",
+                    help="Directory to save/load trained model. Default= ./trained_models/")
+parser.add_argument("--render", action='store_true', default=False,
+                    help="Whether to render the environment to the display. Default=False")
 parser.add_argument("--test", help="Tests a saved Agent model to see the performance. Disables learning",
                     action='store_true', default=False)
 parser.add_argument("--gpu-id", help="GPU device ID to use. Default:0", type=int, default=0, metavar="GPU_ID")
@@ -59,6 +62,7 @@ if torch.cuda.is_available() and use_cuda:
 
 Transition = namedtuple("Transition", ["s", "value_s", "a", "log_prob_a"])
 
+
 class DeepActorCriticAgent(mp.Process):
     def __init__(self, id, env_name, agent_params, shared_state, env_params):
         """
@@ -79,12 +83,12 @@ class DeepActorCriticAgent(mp.Process):
         self.policy = self.multi_variate_gaussian_policy
         self.gamma = self.params['gamma']
         self.trajectory = []  # Contains the trajectory of the agent as a sequence of Transitions
-        self.rewards = []  #  Contains the rewards obtained from the env at every step
+        self.rewards = []  # Contains the rewards obtained from the env at every step
         self.global_step_num = 0
         self.best_mean_reward = - float("inf") # Agent's personal best mean episode reward
         self.best_reward = - float("inf")
         self.saved_params = False  # Whether or not the params have been saved along with the model to model_dir
-        self.continuous_action_space = True  #Assumption by default unless env.action_space is Discrete
+        self.continuous_action_space = True  # Assumption by default unless env.action_space is Discrete
 
     def multi_variate_gaussian_policy(self, obs):
         """
@@ -101,7 +105,7 @@ class DeepActorCriticAgent(mp.Process):
         self.sigma = sigma.to(torch.device("cpu"))
         self.value = value.to(torch.device("cpu"))
         if len(self.mu.shape) == 0: # See if mu is a scalar
-            #self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
+            # self.mu = self.mu.unsqueeze(0)  # This prevents MultivariateNormal from crashing with SIGFPE
             self.mu.unsqueeze_(0)
         self.action_distribution = MultivariateNormal(self.mu, torch.eye(self.action_shape) * self.sigma, validate_args=True)
         return self.action_distribution
@@ -122,7 +126,7 @@ class DeepActorCriticAgent(mp.Process):
     def preproc_obs(self, obs):
         obs = np.array(obs)  # Obs could be lazy frames. So, force fetch before moving forward
         if len(obs.shape) == 3:
-            #  Reshape obs from (H x W x C) order to this order: C x W x H and resize to (C x 84 x 84)
+            # Reshape obs from (H x W x C) order to this order: C x W x H and resize to (C x 84 x 84)
             obs = np.reshape(obs, (obs.shape[2], obs.shape[1], obs.shape[0]))
             obs = np.resize(obs, (obs.shape[0], 84, 84))
         #  Convert to torch Tensor, add a batch dimension, convert to float repr
@@ -334,7 +338,7 @@ class DeepActorCriticAgent(mp.Process):
                 next_obs, reward, done, _ = self.env.step(action)
                 self.rewards.append(reward)
                 ep_reward += reward
-                step_num +=1
+                step_num += 1
                 if not args.test and (step_num >= self.params["learning_step_thresh"] or done):
                     self.learn(next_obs, done)
                     step_num = 0

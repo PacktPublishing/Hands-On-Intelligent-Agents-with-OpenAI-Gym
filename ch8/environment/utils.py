@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# Vectorized environment implementation based on OpenAI Gym| Praveen Palanisamy
+# Chapter 8, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
 import multiprocessing as mp
 import gym
 from abc import ABC, abstractmethod

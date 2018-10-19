@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+# n-step Advantage Actor-Critic Agent (A2C) | Praveen Palanisamy
+# Chapter 8, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
+from argparse import ArgumentParser
+from datetime import datetime
+from collections import namedtuple
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -10,9 +16,6 @@ try:
     import roboschool
 except ImportError:
     pass
-from argparse import ArgumentParser
-from datetime import datetime
-from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 from function_approximator.shallow import Actor as ShallowActor
@@ -25,16 +28,19 @@ from environment import carla_gym
 import environment.atari as Atari
 
 parser = ArgumentParser("deep_ac_agent")
-parser.add_argument("--env", help="Name of the Gym environment", default="Pendulum-v0", metavar="ENV_ID")
-parser.add_argument("--params-file", help="Path to the parameters file. Default= ./a2c_parameters.json",
-                    default="a2c_parameters.json", metavar="a2c_parameters.json")
-parser.add_argument("--model-dir", help="Directory to save/load trained model. Default= ./trained_models/",
-                    default="trained_models/", metavar="MODEL_DIR")
-parser.add_argument("--render", help="Whether to render the environment to the display. Default=False",
-                    action='store_true', default=False)
-parser.add_argument("--test", help="Tests a saved Agent model to see the performance. Disables learning",
-                    action='store_true', default=False)
-parser.add_argument("--gpu-id", help="GPU device ID to use. Default:0", type=int, default=0, metavar="GPU_ID")
+parser.add_argument("--env", help="Name of the Gym environment",
+                    default="Pendulum-v0", metavar="ENV_ID")
+parser.add_argument("--params-file", default="a2c_parameters.json",
+                    help="Path to parameters file.Default=a2c_parameters.json",
+                    metavar="a2c_parameters.json")
+parser.add_argument("--model-dir", default="trained_models/", metavar="MODEL_DIR",
+                    help="Directory to save/load trained model. Default= ./trained_models/")
+parser.add_argument("--render", action='store_true', default=False,
+                    help="Whether to render the environment to the display. Default=False")
+parser.add_argument("--test", action='store_true', default=False,
+                    help="Tests a saved Agent model to see the performance. Disables learning")
+parser.add_argument("--gpu-id", type=int, default=0, metavar="GPU_ID",
+                    help="GPU device ID to use. Default:0")
 args = parser.parse_args()
 
 global_step_num = 0

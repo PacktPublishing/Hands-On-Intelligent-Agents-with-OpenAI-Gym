@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+# Batched n-step Advantage Actor-Critic Agent (A2C) | Praveen Palanisamy
+# Chapter 8, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
+from argparse import ArgumentParser
+from datetime import datetime
+from collections import namedtuple
 import numpy as np
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -10,9 +16,6 @@ try:
     import roboschool
 except ImportError:
     pass
-from argparse import ArgumentParser
-from datetime import datetime
-from collections import namedtuple
 from tensorboardX import SummaryWriter
 from utils.params_manager import ParamsManager
 from function_approximator.shallow import Actor as ShallowActor

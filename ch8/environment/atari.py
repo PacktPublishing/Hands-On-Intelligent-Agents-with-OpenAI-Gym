@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# Atari environment wrappers and utility functions | Praveen Palanisamy
+# based on OpenAI's implementation
+# Chapter 8, Hands-on Intelligent Agents with OpenAI Gym, 2018
+
 import gym
 import atari_py
 import numpy as np
