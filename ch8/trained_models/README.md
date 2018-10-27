@@ -17,6 +17,12 @@ To simply test out these models, you run the script like below:
      `(rl_gym_book) praveen@ubuntu:~/HOIAWOG/ch8$ python async_a2c_agent.py --test
      --render --env BipedalWalker-v2`
      
+   - Testing the brain model for the `Carla-v0` environment using
+   the [a2c_agent](../a2c_agent.py)
+
+     `(rl_gym_book) praveen@ubuntu:~/HOIAWOG/ch8$ python a2c_agent.py --test
+      --env Carla-v0`
+
    - Likewise for other trained agent brains
 
 Few points regarding the trained agent "brains":
