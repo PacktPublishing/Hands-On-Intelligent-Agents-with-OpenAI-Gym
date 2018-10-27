@@ -1,0 +1,14 @@
+{
+    "clip_rewards": true,
+    "gamma": 0.99,
+    "learning_rate": 0.0001,
+    "learning_step_thresh": 10,
+    "load_trained_model": true,
+    "max_num_episodes": 1000000,
+    "num_agents": 1,
+    "save_freq_when_perf_improves": 10,
+    "seed": 1,
+    "summary_file_path_prefix": "./logs/A2C_",
+    "use_cuda": true,
+    "use_entropy_bonus": true
+}
