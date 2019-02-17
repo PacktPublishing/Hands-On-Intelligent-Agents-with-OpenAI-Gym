@@ -92,7 +92,7 @@ class Deep_Q_Learner(object):
                                     final_value=self.epsilon_min,
                                     max_steps= self.params['epsilon_decay_final_step'])
         self.step_num = 0
-                
+
         self.memory = ExperienceMemory(capacity=int(self.params['experience_memory_capacity']))  # Initialize an Experience memory with 1M capacity
 
     def get_action(self, observation):
@@ -148,13 +148,13 @@ class Deep_Q_Learner(object):
                 self.Q_target.load_state_dict(self.Q.state_dict())
             td_target = reward_batch + ~done_batch * \
                 np.tile(self.gamma, len(next_obs_batch)) * \
-                self.Q_target(next_obs_batch).max(1)[0].data
+                self.Q_target(next_obs_batch).max(1)[0].data.cpu().numpy()
         else:
             td_target = reward_batch + ~done_batch * \
                 np.tile(self.gamma, len(next_obs_batch)) * \
-                self.Q(next_obs_batch).detach().max(1)[0].data
+                self.Q(next_obs_batch).detach().max(1)[0].data.cpu().numpy()
 
-        td_target = td_target.to(device)
+        td_target = torch.from_numpy(td_target).to(device)
         action_idx = torch.from_numpy(action_batch).to(device)
         td_error = torch.nn.functional.mse_loss( self.Q(obs_batch).gather(1, action_idx.view(-1, 1)),
                                                        td_target.float().unsqueeze(1))
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     agent_params = params_manager.get_agent_params()
     agent_params["test"] = args.test
     agent = Deep_Q_Learner(observation_shape, action_shape, agent_params)
-    
+
     episode_rewards = list()
     prev_checkpoint_mean_ep_rew = agent.best_mean_reward
     num_improved_episodes_before_checkpoint = 0  # To keep track of the num of ep with higher perf to save model
