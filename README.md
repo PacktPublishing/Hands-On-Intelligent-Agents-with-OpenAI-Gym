@@ -17,3 +17,22 @@ The Book          |  Examples of agents you will learn to develop
 - [Chapter 9: Exploring the Learning Environment Landscape: Roboschool, Gym-Retro, StarCraft-II, DeepMindLab](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch9)
 - Chapter 10: Exploring the Learning Algorithm Landscape: DDPG (Actor-Critic), PPO (Policy-Gradient), Rainbow (Value-based)
 
+## Citing
+
+If you use the code samples in your work or want to cite the book, please use:
+
+```bibtex
+@book{Palanisamy:2018:HIA:3285236,
+ author = {Palanisamy, Praveen},
+ title = {Hands-On Intelligent Agents with OpenAI Gym: Your Guide to Developing AI Agents Using Deep Reinforcement Learning},
+ year = {2018},
+ isbn = {178883657X, 9781788836579},
+ publisher = {Packt Publishing},
+}
+```
+
+<details><summary>Other Formats: (Click to View)</summary>
+<p>
+<div id="gs_citd" aria-live="assertive" data-u="/scholar?q=info:{id}:scholar.google.com/&amp;output=cite&amp;scirp={p}&amp;scfhb=1&amp;hl=en"><div id="gs_citt"><table><tbody><tr><th scope="row" class="gs_cith">MLA</th><td><div tabindex="0" class="gs_citr">Palanisamy, Praveen. <i>Hands-On Intelligent Agents with OpenAI Gym: Your guide to developing AI agents using deep reinforcement learning</i>. Packt Publishing Ltd, 2018.</div></td></tr><tr><th scope="row" class="gs_cith">APA</th><td><div tabindex="0" class="gs_citr">Palanisamy, P. (2018). <i>Hands-On Intelligent Agents with OpenAI Gym: Your guide to developing AI agents using deep reinforcement learning</i>. Packt Publishing Ltd.</div></td></tr><tr><th scope="row" class="gs_cith">Chicago</th><td><div tabindex="0" class="gs_citr">Palanisamy, Praveen. <i>Hands-On Intelligent Agents with OpenAI Gym: Your guide to developing AI agents using deep reinforcement learning</i>. Packt Publishing Ltd, 2018.</div></td></tr><tr><th scope="row" class="gs_cith">Harvard</th><td><div tabindex="0" class="gs_citr">Palanisamy, P., 2018. <i>Hands-On Intelligent Agents with OpenAI Gym: Your guide to developing AI agents using deep reinforcement learning</i>. Packt Publishing Ltd.</div></td></tr><tr><th scope="row" class="gs_cith">Vancouver</th><td><div tabindex="0" class="gs_citr">Palanisamy P. Hands-On Intelligent Agents with OpenAI Gym: Your guide to developing AI agents using deep reinforcement learning. Packt Publishing Ltd; 2018 Jul 31.</div></td></tr></tbody></table></div><div id="gs_citi"><a class="gs_citi" href="https://scholar.googleusercontent.com/scholar.bib?q=info:nrTsCNc4NuEJ:scholar.google.com/&amp;output=citation&amp;scisig=AAGBfm0AAAAAXHdbjGz9YaWF_UA2OsNp3HBmEISQx3pW&amp;scisf=4&amp;ct=citation&amp;cd=-1&amp;hl=en&amp;scfhb=1">BibTeX</a> <a class="gs_citi" href="https://scholar.googleusercontent.com/scholar.enw?q=info:nrTsCNc4NuEJ:scholar.google.com/&amp;output=citation&amp;scisig=AAGBfm0AAAAAXHdbjGz9YaWF_UA2OsNp3HBmEISQx3pW&amp;scisf=3&amp;ct=citation&amp;cd=-1&amp;hl=en&amp;scfhb=1">EndNote</a> <a class="gs_citi" href="https://scholar.googleusercontent.com/scholar.ris?q=info:nrTsCNc4NuEJ:scholar.google.com/&amp;output=citation&amp;scisig=AAGBfm0AAAAAXHdbjGz9YaWF_UA2OsNp3HBmEISQx3pW&amp;scisf=2&amp;ct=citation&amp;cd=-1&amp;hl=en&amp;scfhb=1">RefMan</a> <a class="gs_citi" href="https://scholar.googleusercontent.com/scholar.rfw?q=info:nrTsCNc4NuEJ:scholar.google.com/&amp;output=citation&amp;scisig=AAGBfm0AAAAAXHdbjGz9YaWF_UA2OsNp3HBmEISQx3pW&amp;scisf=1&amp;ct=citation&amp;cd=-1&amp;hl=en&amp;scfhb=1" target="RefWorksMain">RefWorks</a> </div></div>
+</p>
+</details>
