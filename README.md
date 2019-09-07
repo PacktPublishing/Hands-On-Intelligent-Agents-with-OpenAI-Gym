@@ -6,6 +6,8 @@ The Book          |  Examples of agents you will learn to develop
 
 **HOIAWOG!: Your guide to developing AI agents using deep reinforcement learning**. Implement intelligent agents using PyTorch to solve classic AI problems, play console games like Atari, and perform tasks such as autonomous driving using the CARLA driving simulator.
 
+<a class="ba-award" href="https://bookauthority.org/books/best-reinforcement-learning-ebooks?t=1a0g37&s=award&book=178883657X" target="_blank" style="margin:20px; outline:0"><img src="https://award.bookauthority.org/best-reinforcement-learning-ebooks.png?b=178883657X&c=1&v=6&w=200" style="width:200px; height:183px; border:0" alt="BookAuthority Best Reinforcement Learning eBooks of All Time"/></a>
+
 - Chapter 1: Introduction to Intelligent Agents and Learning Environments :space_invader:
 - Chapter 2: Reinforcement Learning and Deep Reinforcement Learning 
 - [Chapter 3: Getting started with OpenAI Gym and Deep Reinforcement Learning](https://github.com/PacktPublishing/Hands-On-Intelligent-Agents-with-OpenAI-Gym/tree/master/ch3)
