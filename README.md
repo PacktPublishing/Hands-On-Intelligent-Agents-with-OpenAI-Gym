@@ -2,7 +2,7 @@
 
 The Book          |  Examples of agents you will learn to develop
 :-------------------------:|:-------------------------:
-[![](https://d255esdrn735hr.cloudfront.net/sites/default/files/imagecache/ppv4_main_book_cover/B09513.png)](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) [ Topics Covered](https://praveenp.com/hands-on-intelligent-agents-with-openai-gym-hoiawog/)|  [![](https://praveenp.com/projects/HOIAWOG/output.gif)](https://praveenp.com/hands-on-intelligent-agents-with-openai-gym-hoiawog/)
+[<img src="https://www.packtpub.com/media/catalog/product/cache/e4d64343b1bc593f1c5348fe05efa4a6/b/0/b09513.png" /></br>](https://www.packtpub.com/big-data-and-business-intelligence/hands-intelligent-agents-openai-gym) [ Topics Covered](https://praveenp.com/hands-on-intelligent-agents-with-openai-gym-hoiawog/)|  [![](https://praveenp.com/projects/HOIAWOG/output.gif)](https://praveenp.com/hands-on-intelligent-agents-with-openai-gym-hoiawog/)
 
 **HOIAWOG!: Your guide to developing AI agents using deep reinforcement learning**. Implement intelligent agents using PyTorch to solve classic AI problems, play console games like Atari, and perform tasks such as autonomous driving using the CARLA driving simulator.
 
